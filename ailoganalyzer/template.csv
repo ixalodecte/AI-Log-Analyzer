@@ -1,0 +1,12 @@
+EventId,EventTemplate
+1,""
+8,"failed to read message prefix on control stream (CioStream socket to <IP>:<NUM>"
+10,"<HEX>"
+11,"LOGIN chdir(/nfs/tmp1/ddcMD jng/8M 5000Ktest) failed: No such file or directory"
+4,"Error loading <*> invalid or missing program image, No such file or directory"
+2,"activating redundant bit steering: rank=<NUM> symbol=<NUM>"
+3,"excessive soft failures, consider replacing the card"
+7,"LOGIN chdir(/p/gb2/draeger/benchmark/dat32k <NUM>) failed: No such file or directory"
+9,"LOGIN chdir(/p/gb2/glosli) failed: No such file or directory"
+5,"$Name: DRV142 <NUM> $ Input parameters: -enableflush -loguserinfo db.properties BlueGene1"
+6,"./mmcs db server --useDatabase BGL --dbproperties serverdb.properties --iolog /bgl/BlueLight/logs/BGL --reconnect-blocks all"
