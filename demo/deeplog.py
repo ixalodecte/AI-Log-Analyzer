@@ -13,6 +13,7 @@ from ailoganalyzer.tools.utils import *
 from ailoganalyzer.extract_template import log2template
 from ailoganalyzer.structure import *
 from ailoganalyzer.sample import *
+from ailoganalyzer.tools.visualisation import *
 
 
 
@@ -64,19 +65,20 @@ seed_everything(seed=1234)
 def preprocess():
     # creation des fichier de sequences:
     para = {
-        "log_file" : "../data/bgl2_1M",
+        "log_file" : "../data/weblog.csv",
         "template_file" : "../data/preprocess/templates.csv",
         "structured_file" : "../data/preprocess/structured.csv",
-        "window_size" : 0.005,
-        "step_size" : 0.001
+        "window_size" : 24,
+        "step_size" : 24
     }
 
     log_structure = {
-        "separator" : ' ',          # separateur entre les champs d'une ligne
-        "time_index" : 4,           # index timestamp
-        "message_start_index" : 9,  # debut message
-        "message_end_index" : None, # fin message
-        "label_index" : 0           # index label (None si aucun)
+        "separator" : ',',          # separateur entre les champs d'une ligne
+        "time_index" : 1,           # index timestamp
+        "time_format" : "[%d/%b/%Y:%H:%M:%S",
+        "message_start_index" : 2,  # debut message
+        "message_end_index" : None, # fin message (None si on va jusqu'a la fin de ligne)
+        "label_index" : None           # index label (None si aucun)
     }
 
     # 1. Extraction des templates
@@ -86,9 +88,10 @@ def preprocess():
 
     # 2. Matching des logs avec les templates.
     log_list = data_read(para["log_file"], log_structure)
-    eventmap = match(log_list, log_structure, para["template_file"])
-    structure(log_list, log_structure, eventmap, para["structured_file"])
+    eventmap = structure(log_list, log_structure, para["template_file"])
+    save_structured(log_list, log_structure, eventmap, para["structured_file"])
 
+    print("\ncreate sequence of event...")
     # 3. Sampling : création des séquences
     log_structured = load_structured_file(para["structured_file"])
     sampling(log_structured,para["window_size"],para["step_size"])
@@ -111,16 +114,21 @@ def predict():
     predicter = Predicter(Model, options)
     predicter.predict_unsupervised()
 
+def visualisation():
+    time_serie = seq_to_time_serie("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess/sequence.csv")
+    visualize_time_serie(time_serie)
 
 if __name__ == "__main__":
 
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('mode', choices=['preprocess','train', 'predict'])
+    parser.add_argument('mode', choices=['preprocess','train', 'predict', 'visualisation'])
     args = parser.parse_args()
     if args.mode == 'train':
         train()
     elif args.mode == 'preprocess':
         preprocess()
+    elif args.mode == 'visualisation':
+        visualisation()
     else:
         predict()

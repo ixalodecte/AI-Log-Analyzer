@@ -25,7 +25,8 @@ def log2template(in_log_file,log_structure, out_file):
     with open(in_log_file) as f:
         for line in f:
             line = line.rstrip()
-            line = " ".join(line.split(log_structure["separator"])[log_structure["message_start_index"]:log_structure["message_end_index"]])
+            if log_structure["separator"]:
+                line = " ".join(line.split(log_structure["separator"])[log_structure["message_start_index"]:log_structure["message_end_index"]])
             result = template_miner.add_log_message(line)
             line_count += 1
             if line_count % batch_size == 0:
@@ -56,7 +57,7 @@ if __name__ == '__main__':
     in_log_file = "../data/bgl2_100k"
     out_file = "../data/preprocess/templates.csv"
     log_structure = {
-        "separator" : ' ',          # separateur entre les champs d'une ligne
+        "separator" : None,          # separateur entre les champs d'une ligne
         "time_index" : 4,           # index timestamp
         "message_start_index" : 9,  # debut message
         "message_end_index" : None, # fin message

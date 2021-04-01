@@ -1,8 +1,10 @@
 import os
 import pandas as pd
 import numpy as np
+from datetime import timedelta
+from numpy import arange
 para = {
-    "window_size":0.5,
+    "window_size":0.1,
     "step_size":0.1,
     "structured_file":"../data/preprocess/structured.csv",
     "BGL_sequence":'../data/preprocess/sequence.csv',
@@ -15,7 +17,14 @@ def load_structured_file(structured_file):
     # load data
     bgl_structured = pd.read_csv(structured_file)
     # convert to data time format
-    bgl_structured["time"] = pd.to_datetime(bgl_structured["time"],format = "%Y-%m-%d-%H.%M.%S.%f")
+    bgl_structured["time"] = pd.to_datetime(bgl_structured["time"],format = "%Y-%m-%d %H:%M:%S", errors = "coerce")
+    print("nombre de date invalide : ", bgl_structured["time"].isnull().sum())
+    print("")
+
+    bgl_structured = bgl_structured.loc[bgl_structured.time.notnull()]
+    bgl_structured.index = arange(0,len(bgl_structured) )
+
+    print(bgl_structured)
     # calculate the time interval since the start time
     bgl_structured["seconds_since"] = (bgl_structured['time']-bgl_structured['time'][0]).dt.total_seconds().astype(int)
     # get the label for each log("-" is normal, else are abnormal label)
@@ -27,11 +36,15 @@ def sampling(bgl_structured, window_size, step_size):
 
     label_data,time_data,event_mapping_data = bgl_structured['label'].values,bgl_structured['seconds_since'].values,bgl_structured['event_id'].values
     log_size = len(label_data)
+
     # split into sliding window
     start_time = time_data[0]
+
     start_index = 0
     end_index = 0
     start_end_index_list = []
+
+
     # get the first start, end index, end time
     for cur_time in time_data:
         if cur_time < start_time + window_size*3600:
@@ -41,10 +54,11 @@ def sampling(bgl_structured, window_size, step_size):
             start_end_pair = tuple((start_index,end_index))
             start_end_index_list.append(start_end_pair)
             break
+
     while end_index < log_size:
         start_time = start_time + step_size*3600
         end_time = end_time + step_size*3600
-        for i in range(start_index,end_index):
+        for i in range(start_index,end_index+1):
             if time_data[i] < start_time:
                 i+=1
             else:
@@ -54,10 +68,14 @@ def sampling(bgl_structured, window_size, step_size):
                 j+=1
             else:
                 break
+
+
+
         start_index = i
         end_index = j
         start_end_pair = tuple((start_index, end_index))
         start_end_index_list.append(start_end_pair)
+
     # start_end_index_list is the  window divided by window_size and step_size,
     # the front is the sequence number of the beginning of the window,
     # and the end is the sequence number of the end of the window
@@ -93,6 +111,10 @@ def sampling(bgl_structured, window_size, step_size):
     BGL_sequence = pd.DataFrame(columns=['sequence','label'])
     BGL_sequence['sequence'] = expanded_event_list
     BGL_sequence['label'] = labels
+
+    delta = pd.to_timedelta(window_size, unit='h')
+    timestamp_sequence = pd.date_range(start = bgl_structured['time'][0], periods = len(BGL_sequence), freq = delta)
+    BGL_sequence['time'] = timestamp_sequence
     BGL_sequence.to_csv(para["BGL_sequence"],index=None)
 
 
