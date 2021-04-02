@@ -14,6 +14,7 @@ from ailoganalyzer.extract_template import log2template
 from ailoganalyzer.structure import *
 from ailoganalyzer.sample import *
 from ailoganalyzer.tools.visualisation import *
+from ailoganalyzer.gen_train_data import *
 
 
 
@@ -127,11 +128,15 @@ def visualisation():
     time_serie = seq_to_time_serie("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess/sequence.csv")
     visualize_time_serie(time_serie)
 
+def split():
+    gen_train_test(0.9)
+
+
 if __name__ == "__main__":
 
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('mode', choices=['preprocess','train', 'predict', 'visualisation'])
+    parser.add_argument('mode', choices=['preprocess','train', 'predict', 'visualisation', 'split'])
     args = parser.parse_args()
     if args.mode == 'train':
         train()
@@ -139,5 +144,7 @@ if __name__ == "__main__":
         preprocess()
     elif args.mode == 'visualisation':
         visualisation()
+    elif args.mode == 'split':
+        split()
     else:
         predict()
