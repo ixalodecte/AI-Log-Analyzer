@@ -39,6 +39,63 @@ def down_sample(logs, labels, sample_ratio):
         del all_index[random_index]
     return sample_logs, sample_labels
 
+def fixed_window(data_dir, num_classes, datatype, sample_ratio=1, semantic=False):
+    '''
+    dataset structure
+        result_logs(dict):
+            result_logs['feature0'] = list()
+            result_logs['feature1'] = list()
+            ...
+        labels(list)
+    '''
+    if semantic: event2semantic_vec = read_json(data_dir + '/event2semantic_vec.json')
+    num_sessions = 0
+    result_logs = {}
+    result_logs['Sequentials'] = []
+    result_logs['Quantitatives'] = []
+    result_logs['Semantics'] = []
+    labels = []
+    if datatype == 'train':
+        data_dir += 'train'
+    if datatype == 'val':
+        data_dir += 'normal'
+    with open(data_dir, 'r') as f:
+        for line in tqdm(f.readlines()):
+            num_sessions += 1
+            line = tuple(map(lambda n: n - 1, map(int, line.strip().split())))
+
+            Sequential_pattern = line
+            Quantitative_pattern = [0] * num_classes
+            log_counter = Counter(Sequential_pattern)
+
+            for key in log_counter:
+                Quantitative_pattern[key] = log_counter[key]
+            if semantic:
+                Semantic_pattern = []
+                for event in Sequential_pattern:
+                    if event == 0:
+                        Semantic_pattern.append([-1] * 300)
+                    else:
+                        Semantic_pattern.append(event2semantic_vec[str(event -
+                                                                    1)])
+            Sequential_pattern = np.array(Sequential_pattern)[:,
+                                                              np.newaxis]
+            Quantitative_pattern = np.array(
+                Quantitative_pattern)[:, np.newaxis]
+            result_logs['Sequentials'].append(Sequential_pattern)
+            result_logs['Quantitatives'].append(Quantitative_pattern)
+            if semantic:
+                result_logs['Semantics'].append(Semantic_pattern)
+            labels.append(line[-1])
+    #print(labels)
+    if sample_ratio != 1:
+        result_logs, labels = down_sample(result_logs, labels, sample_ratio)
+
+    print('File {}, number of sessions {}'.format(data_dir, num_sessions))
+    print('File {}, number of seqs {}'.format(data_dir,
+                                              len(result_logs['Sequentials'])))
+
+    return result_logs, labels
 
 def sliding_window(data_dir, num_classes, datatype, window_size, sample_ratio=1, semantic=False):
     '''
@@ -60,15 +117,15 @@ def sliding_window(data_dir, num_classes, datatype, window_size, sample_ratio=1,
         data_dir += 'train'
     if datatype == 'val':
         data_dir += 'normal'
-
+    print(window_size)
     with open(data_dir, 'r') as f:
         for line in tqdm(f.readlines()):
             num_sessions += 1
             line = tuple(map(lambda n: n - 1, map(int, line.strip().split())))
 
-            for i in range(len(line) - window_size):
+            for i in range( (len(line) - window_size)):
                 Sequential_pattern = list(line[i:i + window_size])
-                Quantitative_pattern = [0] * num_classes # Nombre de templates <a changer>0
+                Quantitative_pattern = [0] * num_classes
                 log_counter = Counter(Sequential_pattern)
 
                 for key in log_counter:
@@ -101,8 +158,8 @@ def sliding_window(data_dir, num_classes, datatype, window_size, sample_ratio=1,
     return result_logs, labels
 
 
-def session_window(data_dir,num_classes, datatype, sample_ratio=1):
-    event2semantic_vec = read_json(data_dir + 'hdfs/event2semantic_vec.json')
+def session_window(data_dir,num_classes, datatype, sample_ratio=1, semantic = False):
+    if semantic: event2semantic_vec = read_json(data_dir + 'hdfs/event2semantic_vec.json')
     result_logs = {}
     result_logs['Sequentials'] = []
     result_logs['Quantitatives'] = []
@@ -110,11 +167,11 @@ def session_window(data_dir,num_classes, datatype, sample_ratio=1):
     labels = []
 
     if datatype == 'train':
-        data_dir += 'hdfs/robust_log_train.csv'
+        data_dir += 'train'
     elif datatype == 'val':
-        data_dir += 'hdfs/robust_log_valid.csv'
+        data_dir += 'normal'
     elif datatype == 'test':
-        data_dir += 'hdfs/robust_log_test.csv'
+        data_dir += 'test'
 
     train_df = pd.read_csv(data_dir)
     for i in tqdm(range(len(train_df))):
@@ -123,11 +180,12 @@ def session_window(data_dir,num_classes, datatype, sample_ratio=1):
         ]
         Sequential_pattern = trp(ori_seq, 50)
         Semantic_pattern = []
-        for event in Sequential_pattern:
-            if event == 0:
-                Semantic_pattern.append([-1] * 300)
-            else:
-                Semantic_pattern.append(event2semantic_vec[str(event - 1)])
+        if semantic:
+            for event in Sequential_pattern:
+                if event == 0:
+                    Semantic_pattern.append([-1] * 300)
+                else:
+                    Semantic_pattern.append(event2semantic_vec[str(event - 1)])
         Quantitative_pattern = [0] * num_classes
         log_counter = Counter(Sequential_pattern)
 

@@ -20,8 +20,8 @@ from ailoganalyzer.tools.visualisation import *
 # Config Parameters
 
 options = dict()
-options['data_dir'] = '/home/kangourou/gestionDeProjet/AILogAnalyzer/data/train/'
-options['window_size'] = 10
+options['data_dir'] = '/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/train/'
+options['window_size'] = 100000000
 options['device'] = "cuda"
 
 # Smaple
@@ -61,24 +61,30 @@ options['num_candidates'] = 9
 
 seed_everything(seed=1234)
 
+def count_num_line(filename):
+    with open(filename) as f:
+        line_count = 0
+        for line in f:
+            line_count += 1
+        return line_count
 
 def preprocess():
     # creation des fichier de sequences:
     para = {
-        "log_file" : "../data/weblog.csv",
+        "log_file" : "../data/bgl2_1M",
         "template_file" : "../data/preprocess/templates.csv",
         "structured_file" : "../data/preprocess/structured.csv",
-        "window_size" : 24,
-        "step_size" : 24
+        "window_size" : 0.5,
+        "step_size" : 0.1
     }
 
     log_structure = {
-        "separator" : ',',          # separateur entre les champs d'une ligne
-        "time_index" : 1,           # index timestamp
-        "time_format" : "[%d/%b/%Y:%H:%M:%S",
-        "message_start_index" : 2,  # debut message
+        "separator" : ' ',          # separateur entre les champs d'une ligne
+        "time_index" : 4,           # index timestamp
+        "time_format" : "%Y-%m-%d-%H.%M.%S.%f",
+        "message_start_index" : 6,  # debut message
         "message_end_index" : None, # fin message (None si on va jusqu'a la fin de ligne)
-        "label_index" : None           # index label (None si aucun)
+        "label_index" : 0           # index label (None si aucun)
     }
 
     # 1. Extraction des templates
@@ -98,6 +104,8 @@ def preprocess():
 
 
 def train():
+    options["num_classes"] = count_num_line("../data/preprocess/templates.csv")
+    print(options["num_classes"])
     Model = deeplog(input_size=options['input_size'],
                     hidden_size=options['hidden_size'],
                     num_layers=options['num_layers'],
@@ -107,6 +115,7 @@ def train():
 
 
 def predict():
+    options["num_classes"] = count_num_line("../data/preprocess/templates.csv")
     Model = deeplog(input_size=options['input_size'],
                     hidden_size=options['hidden_size'],
                     num_layers=options['num_layers'],

@@ -22,14 +22,16 @@ from ailoganalyzer.tools.utils import (save_parameters, seed_everything,
                                  train_val_split)
 
 
-def generate(path, name):
-    window_size = 10
+def generate(path, name, window_size):
     hdfs = {}
     length = 0
     with open(path + name, 'r') as f:
         for ln in f.readlines():
+            # create list of event
             ln = list(map(lambda n: n - 1, map(int, ln.strip().split())))
             ln = ln + [-1] * (window_size + 1 - len(ln))
+
+            # default_dict start at 0 (count ocurence of each line) <amelioration : default_dict>
             hdfs[tuple(ln)] = hdfs.get(tuple(ln), 0) + 1
             length += 1
     print('Number of sessions({}): {}'.format(name, len(hdfs)))
@@ -51,14 +53,35 @@ class Predicter():
         self.semantics = options['semantics']
         self.batch_size = options['batch_size']
 
+    def predict(self, line):
+        for i in range(len(line) - self.window_size):
+            seq0 = line[i:i + self.window_size]
+            label = line[i + self.window_size]
+            seq1 = [0] * self.num_classes
+            log_conuter = Counter(seq0)
+            for key in log_conuter:
+                seq1[key] = log_conuter[key]
+
+            seq0 = torch.tensor(seq0, dtype=torch.float).view(
+                -1, self.window_size, self.input_size).to(self.device)
+            seq1 = torch.tensor(seq1, dtype=torch.float).view(
+                -1, self.num_classes, self.input_size).to(self.device)
+            label = torch.tensor(label).view(-1).to(self.device)
+            output = model(features=[seq0, seq1], device=self.device)
+            predicted = torch.argsort(output,
+                                      1)[0][-self.num_candidates:]
+            if label not in predicted:
+                return i
+        return -1
+
     def predict_unsupervised(self):
         model = self.model.to(self.device)
         model.load_state_dict(torch.load(self.model_path)['state_dict'])
         model.eval()
         print('model_path: {}'.format(self.model_path))
-        test_normal_loader, test_normal_length = generate(self.data_dir, 'normal')
+        test_normal_loader, test_normal_length = generate(self.data_dir, 'normal', self.window_size)
         test_abnormal_loader, test_abnormal_length = generate(self.data_dir,
-            'abnormal')
+            'abnormal', self.window_size)
         TP = 0
         FP = 0
         # Test the model

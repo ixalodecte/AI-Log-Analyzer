@@ -12,7 +12,7 @@ def save(filename, liste):
 
 
 para = {
-    "train_proportion": 0,
+    "train_proportion": 0.05,
     "train_with_abnormal": False,
     "include_blank": False,
     "sequence_file": "../data/preprocess/sequence.csv",

@@ -7,6 +7,7 @@ import pandas as pd
 from tqdm import tqdm
 import fnmatch
 from collections import defaultdict
+import numpy as np
 
 para = {
     "data":"../data/bgl2_100k",
@@ -24,11 +25,12 @@ def information_extractor(line, log_structure):
     if separator:
         line = line.split(separator)
         info["message"] = " ".join(line[log_structure["message_start_index"] : log_structure["message_end_index"]])
-        info["time"] = pd.to_datetime(line[log_structure["time_index"]] ,format = log_structure["time_format"], errors = "coerce")
+        #print(line[log_structure["time_index"]])
+        info["time"] = line[log_structure["time_index"]]
 
         # Si les lignes sont non labelisé : elles sont toutes normale
-        if log_structure["label_index"]:
-            info["label"] = log[log_structure["label_index"]]
+        if log_structure["label_index"] != None:
+            info["label"] = line[log_structure["label_index"]]
         else:
             info["label"] = "-"
     else:
@@ -51,6 +53,9 @@ def data_read(filepath, log_structure):
             data[info].append(infos[info])
 
     data = pd.DataFrame(data = data)
+    print(data["time"][0])
+    print("parsing dates ...")
+    data["time"] = pd.to_datetime(data["time"] ,format = log_structure["time_format"], errors = "coerce")
     print("nombre de date invalide : ", data["time"].isnull().sum(), "sur", len(data["time"]))
     print("")
     data[pd.notnull(data["time"])]
