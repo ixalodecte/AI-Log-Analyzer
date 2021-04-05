@@ -5,8 +5,11 @@ import argparse
 import sys
 sys.path.append('../')
 import os.path
+from pandas import read_csv
+import pickle
 
 from ailoganalyzer.models.lstm import deeplog, loganomaly, robustlog
+from ailoganalyzer.models.time_series import *
 from ailoganalyzer.tools.predict import Predicter
 from ailoganalyzer.tools.train import Trainer
 from ailoganalyzer.tools.utils import *
@@ -15,6 +18,7 @@ from ailoganalyzer.structure import *
 from ailoganalyzer.sample import *
 from ailoganalyzer.tools.visualisation import *
 from ailoganalyzer.gen_train_data import *
+from adtk.detector import SeasonalAD
 
 
 
@@ -56,8 +60,10 @@ options['resume_path'] = None
 options['model_name'] = "deeplog"
 options['save_dir'] = "../result/deeplog/"
 
+
 # Predict
-options['model_path'] = "../result/deeplog/deeplog_last.pth"
+options['model_path'] = str(options['save_dir'] + "deeplog_last.pth")
+options['model_path_TS'] = str(options['save_dir'] + "time_series")
 options['num_candidates'] = 9
 
 seed_everything(seed=1234)
@@ -72,18 +78,18 @@ def count_num_line(filename):
 def preprocess():
     # creation des fichier de sequences:
     para = {
-        "log_file" : "../data/bgl2_1M",
+        "log_file" : "../data/train_web",
         "template_file" : "../data/preprocess/templates.csv",
         "structured_file" : "../data/preprocess/structured.csv",
-        "window_size" : 0.5,
+        "window_size" : 0.1,
         "step_size" : 0.1
     }
 
     log_structure = {
         "separator" : ' ',          # separateur entre les champs d'une ligne
-        "time_index" : 4,           # index timestamp
-        "time_format" : "%Y-%m-%d-%H.%M.%S.%f",
-        "message_start_index" : 6,  # debut message
+        "time_index" : 3,           # index timestamp
+        "time_format" : "[%d/%b/%Y:%H:%M:%S",
+        "message_start_index" : 5,  # debut message
         "message_end_index" : None, # fin message (None si on va jusqu'a la fin de ligne)
         "label_index" : 0           # index label (None si aucun)
     }
@@ -114,7 +120,6 @@ def train():
     trainer = Trainer(Model, options)
     trainer.start_train()
 
-
 def predict():
     options["num_classes"] = count_num_line("../data/preprocess/templates.csv")
     Model = deeplog(input_size=options['input_size'],
@@ -129,14 +134,41 @@ def visualisation():
     visualize_time_serie(time_serie)
 
 def split():
-    gen_train_test(0.9)
+    gen_train_test(0.95)
 
+def train_TS():
+    training_set = pd.read_csv("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/train_ts")
+    training_set = training_set.iloc[:,1:2].values
+    print(training_set)
+    seq, sc = preprocess_TS(training_set,365)
+    with open("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/result/deeplog/sc", 'wb') as f1:
+        pickle.dump(sc, f1)
+    #model = timeSerie(365,22,100).to("cuda")
+    train_TS_LSTM("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/result/deeplog/TS_last.pth", seq)
+    #t = TimeSerie()
+    #print(s_train)
+    #t.fit(s_train)
+    #t.visualize("train")
+    #print(options['model_path_TS'])
+    #save_time_serie(t, options['model_path_TS'])
+
+def test_TS():
+    training_set = pd.read_csv("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/daily-minimum-temperatures-in-me.csv")
+    training_set = training_set.iloc[:,1:2].values
+    print(training_set)
+    with open("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/result/deeplog/sc", 'rb') as f1:
+        sc = pickle.load(f1)
+    seq,_ = preprocess_TS(training_set, 365, sc)
+    test_TS_LSTM("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/result/deeplog/TS_last.pth", seq,sc)
+
+    #time_serie.anomaly(s_test)
+    #time_serie.visualize("test")
 
 if __name__ == "__main__":
 
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('mode', choices=['preprocess','train', 'predict', 'visualisation', 'split'])
+    parser.add_argument('mode', choices=['preprocess','train', 'predict', 'visualisation', 'split', 'trainTS', 'testTS'])
     args = parser.parse_args()
     if args.mode == 'train':
         train()
@@ -146,5 +178,9 @@ if __name__ == "__main__":
         visualisation()
     elif args.mode == 'split':
         split()
+    elif args.mode == 'trainTS':
+        train_TS()
+    elif args.mode == 'testTS':
+        test_TS()
     else:
         predict()

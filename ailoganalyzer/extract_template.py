@@ -5,6 +5,7 @@ import subprocess
 import sys
 import time
 import fnmatch
+import pandas as pd
 
 from drain3 import TemplateMiner
 
@@ -46,11 +47,16 @@ def log2template(in_log_file,log_structure, out_file):
                 f"{len(template_miner.drain.clusters)} clusters")
     sorted_clusters = sorted(template_miner.drain.clusters, key=lambda it: it.size, reverse=True)
 
-    with open(out_file, 'a') as the_file:
-        the_file.write('EventId,EventTemplate\n')
-        for cluster in sorted_clusters:
-            print(str(cluster.cluster_id) + "," + '"' + cluster.get_template() + '"')
-            the_file.write('"'+str(cluster.cluster_id)+ '",' + '"' + cluster.get_template() + '"' + "\n")
+    template_df = pd.DataFrame(columns=["EventId","EventTemplate"])
+    cluster_id = []
+    template_str = []
+    for cluster in sorted_clusters:
+        print(str(cluster.cluster_id) + "," + '"' + cluster.get_template() + '"')
+        cluster_id.append(str(cluster.cluster_id))
+        template_str.append(cluster.get_template())
+    template_df["EventId"] = cluster_id
+    template_df["EventTemplate"] = template_str
+    template_df.to_csv(out_file, index = None)
     return len(sorted_clusters)
 
 if __name__ == '__main__':

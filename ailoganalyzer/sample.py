@@ -115,7 +115,7 @@ def sampling(bgl_structured, window_size, step_size):
     delta = pd.to_timedelta(window_size, unit='h')
     timestamp_sequence = pd.date_range(start = bgl_structured['time'][0], periods = len(BGL_sequence), freq = delta)
     BGL_sequence['time'] = timestamp_sequence
-    BGL_sequence.to_csv(para["BGL_sequence"],index=None)
+    BGL_sequence.to_csv(para["BGL_sequence"],date_format = "%Y-%m-%d %H:%M:%S.%f",index=None)
 
 
 

@@ -114,7 +114,7 @@ def save_structured(data, log_structure, eventmap, filename):
     data_structured = data_structured.sort_values(by="time")
 
 
-    data_structured.to_csv(filename ,index=None)
+    data_structured.to_csv(filename ,date_format = "%Y-%m-%d %H:%M:%S.%f", index=None)
 
 def structure_log(in_log_file, log_structure, out_structured_file, template_file):
     data = data_read(in_log_file, log_structure["separator"])
