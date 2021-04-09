@@ -1,0 +1,4 @@
+pip3 install spacy
+python -m spacy download en_core_web_sm
+wget https://dl.fbaipublicfiles.com/fasttext/vectors-crawl/cc.en.300.bin.gz
+dezip..

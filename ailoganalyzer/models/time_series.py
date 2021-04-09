@@ -1,7 +1,7 @@
 import pickle
 from adtk.data import validate_series
 from adtk.detector import SeasonalAD, LevelShiftAD, PersistAD, VolatilityShiftAD, AutoregressionAD
-from pylab import show
+from pylab import show, where, append, sort
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 import torch
@@ -36,21 +36,14 @@ def preprocess_TS(training_set, seq_length, sc = None):
     if sc == None:
         sc = MinMaxScaler()
     training_data = sc.fit_transform(training_set)
-
-
-
-    seq_length = 4
     x, y = sliding_windows(training_data, seq_length)
-
-    train_size = int(len(y) * 0.67)
-    test_size = len(y) - train_size
 
     dataX = Variable(torch.Tensor(np.array(x)))
     dataY = Variable(torch.Tensor(np.array(y)))
     return (dataX,dataY), sc
 
-def train_TS_LSTM(path, dataX ):
-    num_epochs = 2000
+def train_TS_LSTM(path, dataX, options):
+    num_epochs = 1000
     learning_rate = 0.01
 
     input_size = 1
@@ -83,7 +76,7 @@ def train_TS_LSTM(path, dataX ):
     print("save model")
     torch.save(lstm.state_dict(), path)
 
-def test_TS_LSTM(path, data, sc):
+def load_model_TS(path):
     num_epochs = 2000
     learning_rate = 0.01
 
@@ -92,27 +85,53 @@ def test_TS_LSTM(path, data, sc):
     num_layers = 1
 
     num_classes = 1
-    dataX, dataY = data
 
     lstm = timeSerie(num_classes, input_size, hidden_size, num_layers)
     lstm.load_state_dict(torch.load(path))
+    return lstm
 
+def test_TS_LSTM(path, data, sc, intervalle = []):
+
+    dataX, dataY = data
+    print(dataX)
+    print(dataY)
+
+    lstm = load_model_TS(path)
     lstm.eval()
     train_predict = lstm(dataX)
 
     data_predict = train_predict.data.numpy()
     dataY_plot = dataY.data.numpy()
 
+    borne_inf, borne_sup = intervalle
+    dif = data_predict - dataY_plot
+    anomalyX = append(where(dif < borne_inf), where(dif > borne_sup))
+    #print("anoma",list(anomalyX))
+
     data_predict = sc.inverse_transform(data_predict)
     dataY_plot = sc.inverse_transform(dataY_plot)
+    anomalyY = data_predict[anomalyX]
 
-    plt.axvline(x=3000, c='r', linestyle='--')
+    #plt.axvline(x=3000, c='r', linestyle='--')
 
     plt.plot(dataY_plot)
     plt.plot(data_predict)
+    plt.scatter(anomalyX,anomalyY, color="red")
     plt.suptitle('Time-Series Prediction')
     plt.show()
 
+def compute_normal_interval_TS(path, data):
+    dataX, dataY = data
+    lstm = load_model_TS(path)
+    lstm.eval()
+    prediction = lstm(dataX)
+    data_predict = prediction.data.numpy()
+    data_true = dataY.data.numpy()
+    error_matrix = data_predict - data_true
+    error_matrix = sort(error_matrix.reshape(1,-1)[0])
+    print(error_matrix)
+    sep = int(len(error_matrix) * 0.05)
+    return error_matrix[sep], error_matrix[-sep]
 
 class timeSerie(nn.Module):
 

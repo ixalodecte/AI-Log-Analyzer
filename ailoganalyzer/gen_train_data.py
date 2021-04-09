@@ -32,7 +32,6 @@ def gen_train_test(test_prop, val_prop = 0.2, include_blank = False, train_with_
     if not train_with_abnormal:
         normal = sequence[where(label == 0)]
         test_abnormal = sequence[where(label == 1)]
-
         train_set, test_normal = train_test_split(normal, test_size = test_prop, random_state = 42, shuffle = True)
         train, val = train_test_split(train_set, test_size = val_prop, random_state = 38, shuffle = True)
 

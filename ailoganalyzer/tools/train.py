@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from ailoganalyzer.dataset.log import log_dataset
-from ailoganalyzer.dataset.sample import sliding_window, session_window, fixed_window
+from ailoganalyzer.dataset.sample import sliding_window, session_window
 from ailoganalyzer.tools.utils import (save_parameters, seed_everything,
                                  train_val_split)
 
@@ -47,6 +47,7 @@ class Trainer():
                                                       self.num_classes,
                                                   datatype='train',
                                                   window_size=self.window_size)
+            print("eauinsrteuinrs", len(train_logs["Semantics"][0]), "label", train_labels[0])
             val_logs, val_labels = sliding_window(self.data_dir,
                                                   self.num_classes,
                                               datatype='val',
@@ -57,13 +58,6 @@ class Trainer():
                                                       self.num_classes,
                                                       datatype='train')
             val_logs, val_labels = session_window(self.data_dir,
-                                                  self.num_classes,
-                                                  datatype='val')
-        elif self.sample == 'fixed_window':
-            train_logs, train_labels = fixed_window(self.data_dir,
-                                                      self.num_classes,
-                                                      datatype='train')
-            val_logs, val_labels = fixed_window(self.data_dir,
                                                   self.num_classes,
                                                   datatype='val')
         else:

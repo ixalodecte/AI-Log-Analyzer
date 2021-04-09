@@ -26,45 +26,47 @@ from adtk.detector import SeasonalAD
 
 options = dict()
 options['data_dir'] = '/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/train/'
-options['window_size'] = 100000000
+options['window_size'] = 20
 options['device'] = "cuda"
 
 # Smaple
+#options['sample'] = "sliding_window"
+#options['window_size'] = 10  # if fix_window
 options['sample'] = "sliding_window"
-options['window_size'] = 10  # if fix_window
+options['window_size'] = 20
 
 # Features
-options['sequentials'] = True
+options['sequentials'] = False
 options['quantitatives'] = False
-options['semantics'] = False
+options['semantics'] = True
 options['feature_num'] = sum(
     [options['sequentials'], options['quantitatives'], options['semantics']])
 
 # Model
-options['input_size'] = 1
-options['hidden_size'] = 64
+options['input_size'] = 300
+options['hidden_size'] = 128
 options['num_layers'] = 2
 options['num_classes'] = 1826
 
 # Train
-options['batch_size'] = 2048
+options['batch_size'] = 256
 options['accumulation_step'] = 1
 
 options['optimizer'] = 'adam'
 options['lr'] = 0.001
-options['max_epoch'] = 370
-options['lr_step'] = (300, 350)
+options['max_epoch'] = 60
+options['lr_step'] = (40, 50)
 options['lr_decay_ratio'] = 0.1
 
 options['resume_path'] = None
 options['model_name'] = "deeplog"
-options['save_dir'] = "../result/deeplog/"
+options['save_dir'] = "../result/robustlog/"
 
 
 # Predict
 options['model_path'] = str(options['save_dir'] + "deeplog_last.pth")
 options['model_path_TS'] = str(options['save_dir'] + "time_series")
-options['num_candidates'] = 9
+options['num_candidates'] = 3
 
 seed_everything(seed=1234)
 
@@ -78,18 +80,18 @@ def count_num_line(filename):
 def preprocess():
     # creation des fichier de sequences:
     para = {
-        "log_file" : "../data/train_web",
+        "log_file" : "../data/bgl2_100k",
         "template_file" : "../data/preprocess/templates.csv",
         "structured_file" : "../data/preprocess/structured.csv",
         "window_size" : 0.1,
-        "step_size" : 0.1
+        "step_size" : 0.01
     }
 
     log_structure = {
         "separator" : ' ',          # separateur entre les champs d'une ligne
-        "time_index" : 3,           # index timestamp
-        "time_format" : "[%d/%b/%Y:%H:%M:%S",
-        "message_start_index" : 5,  # debut message
+        "time_index" : 4,           # index timestamp
+        "time_format" : "%Y-%m-%d-%H.%M.%S.%f",
+        "message_start_index" : 0,  # debut message
         "message_end_index" : None, # fin message (None si on va jusqu'a la fin de ligne)
         "label_index" : 0           # index label (None si aucun)
     }
@@ -134,17 +136,17 @@ def visualisation():
     visualize_time_serie(time_serie)
 
 def split():
-    gen_train_test(0.95)
+    gen_train_test(0.3)
 
 def train_TS():
-    training_set = pd.read_csv("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/train_ts")
+    training_set = pd.read_csv("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/train.csv")
     training_set = training_set.iloc[:,1:2].values
     print(training_set)
-    seq, sc = preprocess_TS(training_set,365)
+    seq, sc = preprocess_TS(training_set,24)
     with open("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/result/deeplog/sc", 'wb') as f1:
         pickle.dump(sc, f1)
     #model = timeSerie(365,22,100).to("cuda")
-    train_TS_LSTM("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/result/deeplog/TS_last.pth", seq)
+    train_TS_LSTM("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/result/deeplog/TS_last.pth", seq, options)
     #t = TimeSerie()
     #print(s_train)
     #t.fit(s_train)
@@ -153,13 +155,19 @@ def train_TS():
     #save_time_serie(t, options['model_path_TS'])
 
 def test_TS():
-    training_set = pd.read_csv("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/daily-minimum-temperatures-in-me.csv")
+
+    training_set = pd.read_csv("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/test.csv")
     training_set = training_set.iloc[:,1:2].values
+    val_set = pd.read_csv("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/val.csv")
+    val_set = val_set.iloc[:,1:2].values
     print(training_set)
     with open("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/result/deeplog/sc", 'rb') as f1:
         sc = pickle.load(f1)
-    seq,_ = preprocess_TS(training_set, 365, sc)
-    test_TS_LSTM("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/result/deeplog/TS_last.pth", seq,sc)
+    seq_train,_ = preprocess_TS(training_set, 24, sc)
+    seq_val,_ = preprocess_TS(val_set, 24, sc)
+
+    intervalle = compute_normal_interval_TS("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/result/deeplog/TS_last.pth", seq_val)
+    test_TS_LSTM("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/result/deeplog/TS_last.pth", seq_train,sc, intervalle)
 
     #time_serie.anomaly(s_test)
     #time_serie.visualize("test")
