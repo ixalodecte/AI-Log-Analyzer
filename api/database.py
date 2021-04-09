@@ -32,6 +32,7 @@ class LogLoader():
         self.database_name = database_name
         self.client = pymongo.MongoClient('localhost',27017)
         self.db = self.client[database_name]
+        self.fields = ["abnormal","time","message"]
 
     def insert_data(self, collection, data):
         collection = self.db[collection]
@@ -46,11 +47,11 @@ class LogLoader():
                 log_data.append(d)
         self.insert_data(collection, log_data)
 
-    def select(self, data, select_ls):
-        return {key: data[key] for key in data if key in select_ls}
-
-    def find(self, collection, filters, select_ls):
+    def find(self, collection, filters, select_ls = None):
         collection = self.db[collection]
+        if select_ls == None: select_ls = self.fields
+        field = dict(zip(select_ls, [1] * len(select_ls)))
+        field["_id"] = 0
 
         # recherche entre deux dates
         if "start_time" in filters and "end_time" in filters:
@@ -61,7 +62,7 @@ class LogLoader():
             filters.pop("start_time")
             filters.pop("end_time")
         print(filters)
-        return [self.select(data, select_ls) for data in collection.find(filters)]
+        return list(collection.find(filters,field).sort("time", pymongo.ASCENDING))
 
 
 if __name__ == "__main__":
@@ -91,4 +92,4 @@ if __name__ == "__main__":
         "message",
         "time"
     ]
-    print(logLoader.find("logs", filters, select_ls))
+    print(logLoader.find("logs", filters))
