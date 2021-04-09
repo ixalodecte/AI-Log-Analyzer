@@ -76,6 +76,10 @@ if __name__ == "__main__":
     }
 
     logLoader = LogLoader("ailoganalyzer_db")
+
+
+
+    # --> Décommente les 2 lignes suivantes pour inserer le fichier bgl2_100k dans la base de donnée
     #with open("../data/bgl2_100k", "r") as f:
     #    logLoader.insert_raw_log("logs", f, log_structure)
 

@@ -26,5 +26,15 @@ def api_log():
 
     return "Helloe !"
 
+@app.route('/api/count')
+def api_count_log():
+    param = dict(request.args)
+    sec_shift = param["sec"]
+    filters = {
+        "end_time" : datetime.now(),
+        "start_time":
+    }
+
+
 if __name__ == '__main__':
     app.run(debug=True)
