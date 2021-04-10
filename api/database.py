@@ -32,17 +32,21 @@ class LogLoader():
         self.database_name = database_name
         self.client = pymongo.MongoClient('localhost',27017)
         self.db = self.client[database_name]
-        self.fields = ["abnormal","time","message"]
+        self.fields = ["abnormal","time","message", "system"]
 
     def insert_data(self, collection, data):
         collection = self.db[collection]
         collection.insert_many(data)
+
+    def drop_table(self, collection):
+        self.db.drop_collection(collection)
 
     # Fonctions a utiliser pour inserer un fichier de logs
     def insert_raw_log(self, collection, f_stream, log_structure):
         log_data = []
         for line in f_stream:
             d = information_extractor(line.strip(), log_structure)
+            d["system"] = "192.168.1.1"
             if d != {}:
                 log_data.append(d)
         self.insert_data(collection, log_data)
@@ -86,13 +90,13 @@ if __name__ == "__main__":
         "label_index" : 0           # index label (None si aucun)
     }
 
-    logLoader = LogLoader("ailoganalyzer_db")
+    db = LogLoader("ailoganalyzer_db")
 
 
-
+    #db.drop_table("logs")
     # --> Décommente les 2 lignes suivantes pour inserer le fichier bgl2_100k dans la base de donnée
     #with open("../data/bgl2_100k", "r") as f:
-    #    logLoader.insert_raw_log("logs", f, log_structure)
+    #    db.insert_raw_log("logs", f, log_structure)
 
     # equivalent des parametres where dans le select
     filters = {
@@ -105,6 +109,7 @@ if __name__ == "__main__":
     # Selection des champs
     select_ls = [
         "message",
-        "time"
+        "time",
+        "system"
     ]
-    print(logLoader.find("logs", filters, count=True))
+    print(db.find("logs", filters))
