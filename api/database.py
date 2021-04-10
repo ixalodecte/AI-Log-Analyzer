@@ -47,7 +47,8 @@ class LogLoader():
                 log_data.append(d)
         self.insert_data(collection, log_data)
 
-    def find(self, collection, filters, select_ls = None):
+    def find(self, collection, filters_d, select_ls = None, count=False):
+        filters = filters_d.copy()
         collection = self.db[collection]
         if select_ls == None: select_ls = self.fields
         field = dict(zip(select_ls, [1] * len(select_ls)))
@@ -61,9 +62,19 @@ class LogLoader():
             ]
             filters.pop("start_time")
             filters.pop("end_time")
-        print(filters)
-        return list(collection.find(filters,field).sort("time", pymongo.ASCENDING))
+        cursor = collection.find(filters,field).sort("time", pymongo.ASCENDING)
+        if count:
+            return cursor.count(True)
+        return list(cursor)
 
+    def time_serie(self, collection, dates, param = {}):
+        time_serie = {}
+        for a,b in zip(dates[:-1], dates[1:]):
+            param["start_time"] = a.to_pydatetime()
+            param["end_time"] = b.to_pydatetime()
+
+            time_serie[b.to_pydatetime().isoformat()] = self.find("logs", param, count = True)
+        return time_serie
 
 if __name__ == "__main__":
     log_structure = {
@@ -96,4 +107,4 @@ if __name__ == "__main__":
         "message",
         "time"
     ]
-    print(logLoader.find("logs", filters))
+    print(logLoader.find("logs", filters, count=True))
