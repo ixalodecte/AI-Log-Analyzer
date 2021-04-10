@@ -10,11 +10,21 @@ import json
 import numpy as np
 import io
 from tqdm import tqdm
+import pandas as pd
+import math
+from collections import Counter
+import os
 
-options = {}
-options["preprocess_dir"] = "/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess"
 
-def data_read(filepath):
+#options = {}
+#options["preprocess_dir"] = "/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess"
+
+def read_json(filename):
+    with open(filename, 'r') as load_f:
+        file_dict = json.load(load_f)
+    return file_dict
+
+def data_read_template(filepath):
     fp = open(filepath, "r")
     datas = []  # 存储处理后的数据
     lines = fp.readlines()  # 读取整个文件数据
@@ -49,11 +59,12 @@ def replace_all_blank(value):
     return result
 # https://github.com/explosion/spaCy
 # https://github.com/hamelsmu/Seq2Seq_Tutorial/issues/1
-nlp = spacy.load('en_core_web_sm')
 def lemmatize_stop(text):
     """
     https://stackoverflow.com/questions/45605946/how-to-do-text-pre-processing-using-spacy
     """
+    nlp = spacy.load('en_core_web_sm')
+
 #    nlp = spacy.load('en_core_web_sm')
     document = nlp(text)
     # lemmas = [token.lemma_ for token in document if not token.is_stop]
@@ -90,39 +101,4 @@ def load_vectors(fname):
 
 
 
-fasttext = load_vectors('/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/cc.en.300.vec')
-
-
-
-data = data_read("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess/templates.csv")
-print(data)
-result = {}
-for i in range(len(data)):
-    temp = data[i]
-    temp = camel_to_snake(temp)
-    temp = replace_all_blank(temp)
-    temp = " ".join(temp.split())
-    temp = lemmatize_stop(temp)
-    result[i] = temp
-print(result)
-
-
-motok = set(fasttext.keys())
-for e in result:
-    result[e] = list(set(result[e]) & motok)
-
-dump_2_json(result, '/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess/eventid2template.json')
-
-# 单独保存需要用到的fasttext词向量
-template_set = set()
-for key in result.keys():
-    for word in result[key]:
-        template_set.add(word)
-
-template_fasttext_map = {}
-
-for word in template_set:
-    if word in fasttext:
-        template_fasttext_map[word] = list(fasttext[word])
-
-dump_2_json(template_fasttext_map,'/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess/fasttext_map.json')
+#fasttext = load_vectors('/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/cc.en.300.vec')

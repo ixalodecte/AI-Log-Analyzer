@@ -19,6 +19,7 @@ from ailoganalyzer.sample import *
 from ailoganalyzer.tools.visualisation import *
 from ailoganalyzer.gen_train_data import *
 from adtk.detector import SeasonalAD
+from ailoganalyzer.dataset.line_to_vec import *
 
 
 
@@ -98,8 +99,9 @@ def preprocess():
 
     # 1. Extraction des templates
     if not os.path.isfile(para["template_file"]):
-        num = log2template(para["log_file"], log_structure, para["template_file"])
-        options['num_classes'] = num
+        with open(para["log_file"]) as f:
+            num = log2template(f, log_structure, para["template_file"])
+            options['num_classes'] = num
 
     # 2. Matching des logs avec les templates.
     log_list = data_read(para["log_file"], log_structure)
@@ -111,6 +113,9 @@ def preprocess():
     log_structured = load_structured_file(para["structured_file"])
     sampling(log_structured,para["window_size"],para["step_size"])
 
+def vectorize():
+    word_vec = import_word_vec()
+    line_to_vec(word_vec)
 
 def train():
     options["num_classes"] = count_num_line("../data/preprocess/templates.csv")
@@ -121,6 +126,7 @@ def train():
                     num_keys=options['num_classes'])
     trainer = Trainer(Model, options)
     trainer.start_train()
+#def train
 
 def predict():
     options["num_classes"] = count_num_line("../data/preprocess/templates.csv")
@@ -176,7 +182,7 @@ if __name__ == "__main__":
 
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('mode', choices=['preprocess','train', 'predict', 'visualisation', 'split', 'trainTS', 'testTS'])
+    parser.add_argument('mode', choices=['preprocess','train', 'predict', 'visualisation', 'split', 'trainTS', 'testTS', 'vectorize'])
     args = parser.parse_args()
     if args.mode == 'train':
         train()
@@ -190,5 +196,7 @@ if __name__ == "__main__":
         train_TS()
     elif args.mode == 'testTS':
         test_TS()
+    elif args.mode == 'vectorize':
+        vectorize()
     else:
         predict()
