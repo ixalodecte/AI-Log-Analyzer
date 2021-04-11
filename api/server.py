@@ -1,7 +1,8 @@
 #! /usr/bin/python
 # -*- coding:utf-8 -*-
 
-from flask import Flask, request, url_for, jsonify, session
+from flask import Flask, request, url_for, jsonify, session, render_template, flash, redirect, abort
+import os
 from flask.json import JSONEncoder
 import calendar
 from database import *
@@ -9,8 +10,6 @@ app = Flask(__name__)
 db = LogLoader("ailoganalyzer_db")
 from datetime import datetime
 from pandas import date_range
-
-app.secret_key = 'auinsretiuarsntesteraiu'
 
 user = list(db.find("users", {}))[0]
 print(user)
@@ -28,19 +27,20 @@ class CustomJSONEncoder(JSONEncoder):
 
 app.json_encoder = CustomJSONEncoder
 
-@app.route('/login', methods = ['POST', 'GET'])
-def login():
-    if(request.method == 'POST'):
-        username = request.form.get('username')
-        password = request.form.get('password')
-        if username == user['username'] and password == user['password']:
+@app.route('/')
+def home():
+    if not session.get('logged_in'):
+        return render_template('login.html')
+    else:
+        return render_template("test.html")
 
-            session['user'] = username
-            return redirect('/test.html')
-
-        return "<h1>Wrong username or password</h1>"    #if the username or password does not matches
-
-    return render_template("login.html")
+@app.route('/login', methods=['POST'])
+def do_admin_login():
+    if request.form['password'] == user['password'] and request.form['username'] == user['username']:
+        session['logged_in'] = True
+    else:
+        flash('wrong password!')
+    return home()
 
 @app.route('/api/logs/<action>')
 def api_log(action):
@@ -74,9 +74,14 @@ def api_log(action):
         if action == "get":
             log_ls = db.find("logs", param,fields)
             return jsonify(log_ls)
-    return "unauthorized", 403
+    return home()
 
+@app.route("/logout")
+def logout():
+    session['logged_in'] = False
+    return home()
 
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    app.secret_key = os.urandom(12)
+    app.run(debug=True,host='0.0.0.0', port=4000)
 #test : http://localhost:5000/api/logs/get?abnormal=True&start_time=2005-06-03-16.12.34.557453&end_time=2005-06-04-03.17.40.435081
