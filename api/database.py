@@ -1,5 +1,6 @@
 import pymongo
 from datetime import datetime
+import sys
 
 def information_extractor(line, log_structure):
     info = {
@@ -56,10 +57,12 @@ class LogLoader():
                 log_data.append(d)
         self.insert_data(collection, log_data)
 
-    def find(self, collection, filters_d = {}, select_ls = None, count=False):
+    def find(self, collection, filters_d = {}, select_ls = None, count=False, limit=None):
         filters = filters_d.copy()
+        collection_str = collection
         collection = self.db[collection]
-        if collection == "logs":
+        field = None
+        if collection_str == "logs":
             if select_ls == None: select_ls = self.fields
             field = dict(zip(select_ls, [1] * len(select_ls)))
             field["_id"] = 0
@@ -72,8 +75,13 @@ class LogLoader():
             ]
             filters.pop("start_time")
             filters.pop("end_time")
-        if select_ls != None:
-            cursor = collection.find(filters,field).sort("time", pymongo.ASCENDING)
+        if field != None:
+            #sys.exit(1)
+
+            if limit != None:
+                cursor = collection.find(filters,field).sort("time", pymongo.ASCENDING).limit(limit)
+            else:
+                cursor = collection.find(filters,field).sort("time", pymongo.ASCENDING)
         else:
             cursor = collection.find(filters)
         if count:
@@ -137,5 +145,6 @@ if __name__ == "__main__":
     ]
     print(db.find("logs", filters))
     print()
-    print(print(db.find("logs")))
+
+    print((db.find("logs", limit=2)))
     print(db.start_end_date("192.168.1.1"))

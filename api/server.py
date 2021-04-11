@@ -44,21 +44,26 @@ def do_admin_login():
 
 @app.route('/api/logs/<action>')
 def api_log(action):
-    if('user' in session and session['user'] == user['username']):
+    if session.get('logged_in'):
         action = str(action)
         param = dict(request.args)
         fields = None
+        limit = None
         count = False
 
         if "fields" in param:
             field = param["fields"].split(",")
             param.pop("fields")
+        if "limit" in param:
+            limit = int(param["limit"])
+            param.pop("limit")
         if "start_time" in param:
             param["start_time"] = datetime.strptime(param["start_time"],"%Y-%m-%d-%H.%M.%S.%f")
         if "end_time" in param:
             param["end_time"] = datetime.strptime(param["end_time"],"%Y-%m-%d-%H.%M.%S.%f")
         if "abnormal" in param:
             param["abnormal"] = (param["abnormal"] == "True")
+
 
         if action == "count":
             if "number" in param:
@@ -72,7 +77,8 @@ def api_log(action):
             return jsonify(time_serie)
 
         if action == "get":
-            log_ls = db.find("logs", param,fields)
+            print("hello")
+            log_ls = db.find("logs", param,fields, limit=limit)
             return jsonify(log_ls)
     return home()
 
