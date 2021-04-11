@@ -37,6 +37,11 @@ class LogLoader():
     def insert_data(self, collection, data):
         collection = self.db[collection]
         collection.insert_many(data)
+        if collection == "logs":
+            systems = self.db["systems"]
+            if len(list(systems.find({"name" : data["system"]}))) == 0:
+                self.insert_data("systems", [{"name":data["system"], "trained":False}])
+
 
     def drop_table(self, collection):
         self.db.drop_collection(collection)
@@ -80,6 +85,20 @@ class LogLoader():
             time_serie[b.to_pydatetime().isoformat()] = self.find("logs", param, count = True)
         return time_serie
 
+    def set_trained(self, system):
+        systems = self.db["system"]
+        systems.update_one({"name": system}, {"$set":{"trained":True}})
+
+    def set_abnormal_log(self, line):
+        logs = self.db["logs"]
+        logs.update_one(line, {"$set":{"abnormal" :True}})
+
+    def start_end_date(self, system):
+        logs = self.db["logs"]
+        debut = logs.find().sort("time", pymongo.ASCENDING).limit(1)
+        end = logs.find().sort("time", pymongo.DESCENDING).limit(1)
+        return list(debut)[0]["time"], list(end)[0]["time"]
+
 if __name__ == "__main__":
     log_structure = {
         "separator" : ' ',          # separateur entre les champs d'une ligne
@@ -113,3 +132,4 @@ if __name__ == "__main__":
         "system"
     ]
     print(db.find("logs", filters))
+    print(db.start_end_date("192.168.1.1"))
