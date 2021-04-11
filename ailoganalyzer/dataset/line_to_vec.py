@@ -1,50 +1,7 @@
 from ailoganalyzer.dataset.utils_semantic_vec import *
 
-def import_word_vec():
-    fasttext = load_vectors('/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/cc.en.300.vec')
-    return fasttext
-
-def line_to_vec(word_vec):
-    fasttext = word_vec
-    data = data_read_template("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess/templates.csv")
-    print(data)
-    result = {}
-
-    # extraction des mots
-    for i in range(len(data)):
-        temp = data[i]
-        temp = camel_to_snake(temp)
-        temp = replace_all_blank(temp)
-        temp = " ".join(temp.split())
-        temp = lemmatize_stop(temp)
-        result[i] = temp
-    print(result)
-
-    # garde que les mots dans fasttext
-    motok = set(fasttext.keys())
-    for e in result:
-        result[e] = list(set(result[e]) & motok)
-
-    dump_2_json(result, '/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess/eventid2template.json')
-
-    # 单独保存需要用到的fasttext词向量
-    template_set = set()
-    for key in result.keys():
-        for word in result[key]:
-            template_set.add(word)
-
-    template_fasttext_map = {}
-
-    for word in template_set:
-        if word in fasttext:
-            template_fasttext_map[word] = list(fasttext[word])
-
-    dump_2_json(template_fasttext_map,'/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess/fasttext_map.json')
-
-    #2 ..
-
-    eventid2template = read_json('/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess/eventid2template.json')
-    fasttext_map = read_json('/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess/fasttext_map.json')
+def calcul_TFIDF():
+    eventid2template = read_json("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess/eventid2template.json")
     print(eventid2template)
     dataset = list()
     with open('/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/train/train', 'r') as f:
@@ -94,6 +51,64 @@ def line_to_vec(word_vec):
     print(word2idf)
     dump_2_json(word2idf,'/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess/word2idf.json')
 
+def import_word_vec():
+    fasttext = load_vectors('/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/cc.en.300.vec')
+    return fasttext
+
+def template_to_vec(word_vec, template):
+    event2semantic_vec = read_json('/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess/event2semantic_vec.json')
+    vec = line_to_vec(word_vec, [template], train = False)
+    return vec["0"]
+
+
+def trainer_vec(word_vec):
+    data = data_read_template("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess/templates.csv")
+    line_to_vec(word_vec, data)
+
+
+def line_to_vec(word_vec, data, train=True):
+    fasttext = word_vec
+    #data = data_read_template("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess/templates.csv")
+    print(data)
+    result = {}
+
+    # extraction des mots
+    for i in range(len(data)):
+        temp = data[i]
+        temp = camel_to_snake(temp)
+        temp = replace_all_blank(temp)
+        temp = " ".join(temp.split())
+        temp = lemmatize_stop(temp)
+        result[i] = temp
+    print(result)
+
+    # garde que les mots dans fasttext
+    motok = set(fasttext.keys())
+    for e in result:
+        result[e] = list(set(result[e]) & motok)
+
+    event2template = result
+
+    # 单独保存需要用到的fasttext词向量
+    template_set = set()
+    for key in result.keys():
+        for word in result[key]:
+            template_set.add(word)
+
+    template_fasttext_map = {}
+
+    for word in template_set:
+        if word in fasttext:
+            template_fasttext_map[word] = list(fasttext[word])
+
+    fasttext_map = template_fasttext_map
+
+    #2 ..
+    dump_2_json(template_fasttext_map,'/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess/fasttext_map.json')
+    dump_2_json(result, '/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess/eventid2template.json')
+    if train:
+        calcul_TFIDF()
+
     # 3..
 
     event2template = read_json('/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess/eventid2template.json')
@@ -127,4 +142,5 @@ def line_to_vec(word_vec):
             fasttext_weight = np.array(fasttext[word])
             semantic_vec += count[word]*fasttext_weight
         event2semantic_vec[event] = list(semantic_vec)
-    dump_2_json(event2semantic_vec,'/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess/event2semantic_vec.json')
+    return event2semantic_vec
+    #dump_2_json(event2semantic_vec,'/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess/event2semantic_vec.json')

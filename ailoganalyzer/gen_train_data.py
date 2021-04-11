@@ -44,20 +44,20 @@ def gen_train_test(test_prop, val_prop = 0.2, include_blank = False, train_with_
         print("\t",test_normal.shape[0], "normal")
         print("\t",test_abnormal.shape[0], "abnormal")
     else:
-        train_set, test = train_test_split(normal, test_size = test_prop, random_state = 42, shuffle = True)
+        train_set, test = train_test_split(sequence, test_size = test_prop, random_state = 42, shuffle = True)
         train_label, test_label = train_test_split(label, test_size = test_prop, random_state = 42, shuffle = True) # devrait etre ok mais a tester
 
-        train, val = train_test_split(normal, test_size = val_prop, random_state = 42, shuffle = True)
+        train, val = train_test_split(train_set, test_size = val_prop, random_state = 42, shuffle = True)
 
         #print(train)
         #print(where(test_label == 1))
         test_normal = test[(where(test_label == 0)[0])]
         test_abnormal = test[(where(test_label == 1)[0])]
-        a=train[where(train_label == 0)]
+        #a=train[where(train_label == 0)]
 
         print("train :", train.shape[0], "sequences")
-        print("\t",train[where(train_label == 0)].shape[0], "normal")
-        print("\t",train[where(train_label == 1)].shape[0], "abnormal")
+        print("\t",train_set[where(train_label == 0)].shape[0], "normal")
+        print("\t",train_set[where(train_label == 1)].shape[0], "abnormal")
 
         print("test :", test.shape[0], "sequences")
         print("\t",test_normal.shape[0], "normal")

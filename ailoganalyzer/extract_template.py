@@ -8,38 +8,42 @@ import fnmatch
 import pandas as pd
 
 from drain3 import TemplateMiner
+from drain3.file_persistence import FilePersistence
 
 
 
-def log2template(in_log_file,log_structure, out_file):
+
+def log2template(lines, out_file, log_structure = None):
+    persistence = FilePersistence("../data/preprocess/templates_persist.bin")
+
     logger = logging.getLogger(__name__)
     logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(message)s')
 
 
 
-    template_miner = TemplateMiner()
+    template_miner = TemplateMiner(persistence)
 
     line_count = 0
     start_time = time.time()
     batch_start_time = start_time
     batch_size = 10000
-    with open(in_log_file) as f:
-        for line in f:
-            line = line.rstrip()
+    for line in lines:
+        line = line.rstrip()
+        if log_structure:
             if log_structure["separator"]:
                 line = " ".join(line.split(log_structure["separator"])[log_structure["message_start_index"]:log_structure["message_end_index"]])
-            result = template_miner.add_log_message(line)
-            line_count += 1
-            if line_count % batch_size == 0:
-                time_took = time.time() - batch_start_time
-                rate = batch_size / time_took
-                logger.info(f"Processing line: {line_count}, rate {rate:.1f} lines/sec, "
-                            f"{len(template_miner.drain.clusters)} clusters so far.")
-                batch_start_time = time.time()
-            if result["change_type"] != "none":
-                result_json = json.dumps(result)
-                logger.info(f"Input ({line_count}): " + line)
-                logger.info("Result: " + result_json)
+        result = template_miner.add_log_message(line)
+        line_count += 1
+        if line_count % batch_size == 0:
+            time_took = time.time() - batch_start_time
+            rate = batch_size / time_took
+            logger.info(f"Processing line: {line_count}, rate {rate:.1f} lines/sec, "
+                        f"{len(template_miner.drain.clusters)} clusters so far.")
+            batch_start_time = time.time()
+        if result["change_type"] != "none":
+            result_json = json.dumps(result)
+            logger.info(f"Input ({line_count}): " + line)
+            logger.info("Result: " + result_json)
 
     time_took = time.time() - start_time
     rate = line_count / time_took
@@ -52,10 +56,11 @@ def log2template(in_log_file,log_structure, out_file):
     template_str = []
     for cluster in sorted_clusters:
         print(str(cluster.cluster_id) + "," + '"' + cluster.get_template() + '"')
-        cluster_id.append(str(cluster.cluster_id))
+        cluster_id.append(cluster.cluster_id)
         template_str.append(cluster.get_template())
     template_df["EventId"] = cluster_id
     template_df["EventTemplate"] = template_str
+    template_df = template_df.sort_values(by = ["EventId"])
     template_df.to_csv(out_file, index = None)
     return len(sorted_clusters)
 

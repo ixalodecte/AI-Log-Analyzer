@@ -1,7 +1,7 @@
 from pylab import *
 import pandas as pd
 
-def seq_to_time_serie(seq_filename):
+def structured_to_time_serie(seq_filename):
 
     data = pd.read_csv(seq_filename)
     data["sequence"] = data["sequence"].transform(lambda x : len(x.strip('][').split(', ')))

@@ -46,13 +46,15 @@ class Trainer():
             train_logs, train_labels = sliding_window(self.data_dir,
                                                       self.num_classes,
                                                   datatype='train',
-                                                  window_size=self.window_size)
+                                                  window_size=self.window_size,
+                                                  system = options["system"])
             print("eauinsrteuinrs", len(train_logs["Semantics"][0]), "label", train_labels[0])
             val_logs, val_labels = sliding_window(self.data_dir,
                                                   self.num_classes,
                                               datatype='val',
                                               window_size=self.window_size,
-                                              sample_ratio=1)
+                                              sample_ratio=1,
+                                              system = options["system"])
         elif self.sample == 'session_window':
             train_logs, train_labels = session_window(self.data_dir,
                                                       self.num_classes,

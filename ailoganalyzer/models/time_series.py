@@ -38,8 +38,8 @@ def preprocess_TS(training_set, seq_length, sc = None):
     training_data = sc.fit_transform(training_set)
     x, y = sliding_windows(training_data, seq_length)
 
-    dataX = Variable(torch.Tensor(np.array(x)))
-    dataY = Variable(torch.Tensor(np.array(y)))
+    dataX = Variable(torch.Tensor(np.array(x)).to(device))
+    dataY = Variable(torch.Tensor(np.array(y)).to(device))
     return (dataX,dataY), sc
 
 def train_TS_LSTM(path, dataX, options):
@@ -47,14 +47,14 @@ def train_TS_LSTM(path, dataX, options):
     learning_rate = 0.01
 
     input_size = 1
-    hidden_size = 2
+    hidden_size = 8
     num_layers = 1
 
     num_classes = 1
     trainX, trainY = dataX
 
 
-    lstm = timeSerie(num_classes, input_size, hidden_size, num_layers)
+    lstm = timeSerie(num_classes, input_size, hidden_size, num_layers).to(device)
 
     criterion = torch.nn.MSELoss()    # mean-squared error for regression
     optimizer = torch.optim.Adam(lstm.parameters(), lr=learning_rate)
@@ -77,17 +77,18 @@ def train_TS_LSTM(path, dataX, options):
     torch.save(lstm.state_dict(), path)
 
 def load_model_TS(path):
-    num_epochs = 2000
+    num_epochs = 1000
     learning_rate = 0.01
 
     input_size = 1
-    hidden_size = 2
+    hidden_size = 4
     num_layers = 1
 
     num_classes = 1
 
     lstm = timeSerie(num_classes, input_size, hidden_size, num_layers)
     lstm.load_state_dict(torch.load(path))
+    lstm.to(device)
     return lstm
 
 def test_TS_LSTM(path, data, sc, intervalle = []):
@@ -100,8 +101,8 @@ def test_TS_LSTM(path, data, sc, intervalle = []):
     lstm.eval()
     train_predict = lstm(dataX)
 
-    data_predict = train_predict.data.numpy()
-    dataY_plot = dataY.data.numpy()
+    data_predict = train_predict.cpu().data.numpy()
+    dataY_plot = dataY.cpu().data.numpy()
 
     borne_inf, borne_sup = intervalle
     dif = data_predict - dataY_plot
@@ -125,13 +126,13 @@ def compute_normal_interval_TS(path, data):
     lstm = load_model_TS(path)
     lstm.eval()
     prediction = lstm(dataX)
-    data_predict = prediction.data.numpy()
-    data_true = dataY.data.numpy()
+    data_predict = prediction.cpu().data.numpy()
+    data_true = dataY.cpu().data.numpy()
     error_matrix = data_predict - data_true
     error_matrix = sort(error_matrix.reshape(1,-1)[0])
     print(error_matrix)
-    sep = int(len(error_matrix) * 0.05)
-    return error_matrix[sep], error_matrix[-sep]
+    sep = int(len(error_matrix) * 0.0)
+    return error_matrix[sep], error_matrix[len(error_matrix)-sep-1]
 
 class timeSerie(nn.Module):
 
@@ -151,10 +152,10 @@ class timeSerie(nn.Module):
 
     def forward(self, x):
         h_0 = Variable(torch.zeros(
-            self.num_layers, x.size(0), self.hidden_size))
+            self.num_layers, x.size(0), self.hidden_size).to(device))
 
         c_0 = Variable(torch.zeros(
-            self.num_layers, x.size(0), self.hidden_size))
+            self.num_layers, x.size(0), self.hidden_size).to(device))
 
         # Propagate input through LSTM
         ula, (h_out, _) = self.lstm(x, (h_0, c_0))
@@ -174,47 +175,3 @@ def save_time_serie(time_serie, filename):
 def load_time_serie(filename):
     with open(filename, 'rb') as f:
         return pickle.load(f)
-
-class TimeSerie():
-    def __init__(self, model = "paternChange"):
-        self.s_test = None
-        self.anomalies = None
-        self.s_train = None
-        self.model_name = model
-
-    def fit(self, s_train):
-        self.s_train = s_train = validate_series(s_train)
-        if self.model_name == 'seasonal':
-            # changer si pas seasonal
-            self.model = SeasonalAD()
-            try:
-                self.model.fit(s_train)
-            except RuntimeError:
-                self.model_name = "paternChange"
-
-        if self.model_name == "paternChange":
-            self.model = VolatilityShiftAD("1D")
-        if self.model_name == "levelShift":
-            self.model = LevelShiftAD(10)
-        if self.model_name == "spike":
-            self.model = PersistAD()
-        if self.model_name == "cyclic":
-            self.model = AutoregressionAD()
-        self.model.fit(s_train)
-
-    def anomaly(self, s_test):
-        self.s_test = validate_series(s_test)
-        self.anomalies = self.model.detect(self.s_test)
-
-    def visualize(self, which = "train", anomaly = True):
-        print(self.s_train)
-        print(type(self.s_train))
-        if which == "test":
-            if anomaly:
-                plot(self.s_test, anomaly=self.anomalies, anomaly_color="red", anomaly_tag="marker")
-            else:
-                if anomaly:
-                    plot(self.s_test)
-        else:
-            plot(self.s_train)
-        show()

@@ -77,7 +77,7 @@ def match(line, templates, event2id):
     print(templates)
     return 'error'
 
-def structure(data, log_structure, template):
+def structure(data, template):
     # match event to the template
     template = pd.read_csv(template)
 
@@ -98,7 +98,7 @@ def structure(data, log_structure, template):
         eventmap.append(match(log,event, event2id))
     return eventmap
 
-def save_structured(data, log_structure, eventmap, filename):
+def save_structured(data, eventmap, filename):
     # extract label, time and origin event
     label = []
     time = []

@@ -26,11 +26,11 @@ def read_json(filename):
 
 def data_read_template(filepath):
     fp = open(filepath, "r")
-    datas = []  # 存储处理后的数据
-    lines = fp.readlines()  # 读取整个文件数据
-    i = 0  # 为一行数据
+    datas = []
+    lines = fp.readlines()
+    i = 0
     for line in lines:
-        row = line.strip('\n') # 去除两头的换行符，按空格分割
+        row = line.strip('\n')
         if i != 0:
             datas.append(row)
         i = i + 1

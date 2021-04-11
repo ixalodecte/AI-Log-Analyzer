@@ -40,7 +40,7 @@ def down_sample(logs, labels, sample_ratio):
     return sample_logs, sample_labels
 
 
-def sliding_window(data_dir, num_classes, datatype, window_size, sample_ratio=1, semantic=True):
+def sliding_window(data_dir, num_classes, datatype, window_size, sample_ratio=1, semantic=True, system=""):
     '''
     dataset structure
         result_logs(dict):
@@ -49,7 +49,12 @@ def sliding_window(data_dir, num_classes, datatype, window_size, sample_ratio=1,
             ...
         labels(list)
     '''
-    if semantic: event2semantic_vec = read_json(data_dir + '../preprocess/event2semantic_vec.json')
+    if semantic:
+        if system:
+            print(data_dir + '../preprocess/event2semantic_vec_' + system + '.json')
+            event2semantic_vec = read_json(data_dir + '../preprocess/event2semantic_vec_' + system + '.json')
+        else:
+            event2semantic_vec = read_json(data_dir + '../preprocess/event2semantic_vec.json')
     num_sessions = 0
     result_logs = {}
     result_logs['Sequentials'] = []
