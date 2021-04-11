@@ -7,7 +7,7 @@ sys.path.append('../')
 import os.path
 from pandas import read_csv
 import pickle
-
+from os import makedirs
 from ailoganalyzer.models.lstm import deeplog, loganomaly, robustlog
 from ailoganalyzer.models.time_series import *
 from ailoganalyzer.tools.predict import Predicter
@@ -20,6 +20,7 @@ from ailoganalyzer.tools.visualisation import *
 from ailoganalyzer.gen_train_data import *
 from adtk.detector import SeasonalAD
 from ailoganalyzer.dataset.line_to_vec import *
+from api.database import LogLoader
 
 
 
@@ -54,21 +55,29 @@ options['batch_size'] = 256
 options['accumulation_step'] = 1
 
 options['optimizer'] = 'adam'
-options['lr'] = 0.001
-options['max_epoch'] = 60
-options['lr_step'] = (40, 50)
+options['lr'] = 0.01
+options['max_epoch'] = 6
+options['lr_step'] = (4, 5)
 options['lr_decay_ratio'] = 0.1
 
 options['resume_path'] = None
 options['model_name'] = "deeplog"
-options['save_dir'] = "../result/robustlog/"
+options['save_dir'] = "../result/ailoganalyzer/"
 
 
 # Predict
 options['model_path'] = str(options['save_dir'] + "deeplog_last.pth")
-options['model_path_TS'] = str(options['save_dir'] + "time_series")
-options['num_candidates'] = 3
+options['model_path_TS'] = str(options['save_dir'] + "time_series.pth")
+options['num_candidates'] = 2
+options["system"] = ""
 
+para = {
+    "log_file" : "../data/bgl2_100k",
+    "template_file" : "../data/preprocess/templates.csv",
+    "structured_file" : "../data/preprocess/structured.csv",
+    "window_size" : 0.1,
+    "step_size" : 0.01
+}
 seed_everything(seed=1234)
 
 def count_num_line(filename):
@@ -79,14 +88,8 @@ def count_num_line(filename):
         return line_count
 
 def preprocess():
-    # creation des fichier de sequences:
-    para = {
-        "log_file" : "../data/bgl2_100k",
-        "template_file" : "../data/preprocess/templates.csv",
-        "structured_file" : "../data/preprocess/structured.csv",
-        "window_size" : 0.1,
-        "step_size" : 0.01
-    }
+
+
 
     log_structure = {
         "separator" : ' ',          # separateur entre les champs d'une ligne
@@ -100,13 +103,13 @@ def preprocess():
     # 1. Extraction des templates
     if not os.path.isfile(para["template_file"]):
         with open(para["log_file"]) as f:
-            num = log2template(f, log_structure, para["template_file"])
+            num = log2template(f, para["template_file"], log_structure)
             options['num_classes'] = num
 
     # 2. Matching des logs avec les templates.
     log_list = data_read(para["log_file"], log_structure)
-    eventmap = structure(log_list, log_structure, para["template_file"])
-    save_structured(log_list, log_structure, eventmap, para["structured_file"])
+    eventmap = structure(log_list, para["template_file"])
+    save_structured(log_list, eventmap, para["structured_file"])
 
     print("\ncreate sequence of event...")
     # 3. Sampling : création des séquences
@@ -114,11 +117,10 @@ def preprocess():
     sampling(log_structured,para["window_size"],para["step_size"])
 
 def vectorize():
-    word_vec = import_word_vec()
-    line_to_vec(word_vec)
+    trainer_vec(word_vec)
 
 def train():
-    options["num_classes"] = count_num_line("../data/preprocess/templates.csv")
+    #options["num_classes"] = count_num_line("../data/preprocess/templates.csv")
     print(options["num_classes"])
     Model = deeplog(input_size=options['input_size'],
                     hidden_size=options['hidden_size'],
@@ -126,7 +128,10 @@ def train():
                     num_keys=options['num_classes'])
     trainer = Trainer(Model, options)
     trainer.start_train()
-#def train
+
+
+
+
 
 def predict():
     options["num_classes"] = count_num_line("../data/preprocess/templates.csv")
@@ -145,14 +150,19 @@ def split():
     gen_train_test(0.3)
 
 def train_TS():
-    training_set = pd.read_csv("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/train.csv")
+    training_set = pd.read_csv("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/xaa")
     training_set = training_set.iloc[:,1:2].values
     print(training_set)
-    seq, sc = preprocess_TS(training_set,24)
-    with open("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/result/deeplog/sc", 'wb') as f1:
+    seq, sc = preprocess_TS(training_set,288)
+    with open("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/result/deeplog/sc" + options["system"], 'wb') as f1:
         pickle.dump(sc, f1)
     #model = timeSerie(365,22,100).to("cuda")
-    train_TS_LSTM("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/result/deeplog/TS_last.pth", seq, options)
+    train_TS_LSTM(options["model_path_TS"], seq, options)
+    val_set = pd.read_csv("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/val")
+    val_set = val_set.iloc[:,1:2].values
+    seq_val,_ = preprocess_TS(val_set, 288, sc)
+    intervalle = compute_normal_interval_TS(options["model_path_TS"], seq_val)
+
     #t = TimeSerie()
     #print(s_train)
     #t.fit(s_train)
@@ -162,18 +172,15 @@ def train_TS():
 
 def test_TS():
 
-    training_set = pd.read_csv("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/test.csv")
+    training_set = pd.read_csv("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/testt")
     training_set = training_set.iloc[:,1:2].values
-    val_set = pd.read_csv("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/val.csv")
-    val_set = val_set.iloc[:,1:2].values
+
     print(training_set)
     with open("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/result/deeplog/sc", 'rb') as f1:
         sc = pickle.load(f1)
-    seq_train,_ = preprocess_TS(training_set, 24, sc)
-    seq_val,_ = preprocess_TS(val_set, 24, sc)
+    seq_train,_ = preprocess_TS(training_set, 288, sc)
 
-    intervalle = compute_normal_interval_TS("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/result/deeplog/TS_last.pth", seq_val)
-    test_TS_LSTM("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/result/deeplog/TS_last.pth", seq_train,sc, intervalle)
+    test_TS_LSTM(options["model_path_TS"], seq_train,sc, intervalle)
 
     #time_serie.anomaly(s_test)
     #time_serie.visualize("test")
@@ -184,8 +191,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('mode', choices=['preprocess','train', 'predict', 'visualisation', 'split', 'trainTS', 'testTS', 'vectorize'])
     args = parser.parse_args()
+    #options["num_classes"] = count_num_line("../data/preprocess/templates.csv")
     if args.mode == 'train':
-        train()
+        train_db("192.168.1.1")
     elif args.mode == 'preprocess':
         preprocess()
     elif args.mode == 'visualisation':

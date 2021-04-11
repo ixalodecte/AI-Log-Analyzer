@@ -56,12 +56,13 @@ class LogLoader():
                 log_data.append(d)
         self.insert_data(collection, log_data)
 
-    def find(self, collection, filters_d, select_ls = None, count=False):
+    def find(self, collection, filters_d = {}, select_ls = None, count=False):
         filters = filters_d.copy()
         collection = self.db[collection]
-        if select_ls == None: select_ls = self.fields
-        field = dict(zip(select_ls, [1] * len(select_ls)))
-        field["_id"] = 0
+        if collection == "logs":
+            if select_ls == None: select_ls = self.fields
+            field = dict(zip(select_ls, [1] * len(select_ls)))
+            field["_id"] = 0
 
         # recherche entre deux dates
         if "start_time" in filters and "end_time" in filters:
@@ -71,7 +72,10 @@ class LogLoader():
             ]
             filters.pop("start_time")
             filters.pop("end_time")
-        cursor = collection.find(filters,field).sort("time", pymongo.ASCENDING)
+        if select_ls != None:
+            cursor = collection.find(filters,field).sort("time", pymongo.ASCENDING)
+        else:
+            cursor = collection.find(filters)
         if count:
             return cursor.count(True)
         return list(cursor)
@@ -132,4 +136,6 @@ if __name__ == "__main__":
         "system"
     ]
     print(db.find("logs", filters))
+    print()
+    print(print(db.find("logs")))
     print(db.start_end_date("192.168.1.1"))

@@ -43,11 +43,11 @@ def preprocess_TS(training_set, seq_length, sc = None):
     return (dataX,dataY), sc
 
 def train_TS_LSTM(path, dataX, options):
-    num_epochs = 1000
-    learning_rate = 0.01
+    num_epochs = 300
+    learning_rate = 0.001
 
     input_size = 1
-    hidden_size = 8
+    hidden_size = 100
     num_layers = 1
 
     num_classes = 1
@@ -71,17 +71,17 @@ def train_TS_LSTM(path, dataX, options):
         loss.backward()
 
         optimizer.step()
-        if epoch % 100 == 0:
+        if epoch % 10 == 0:
             print("Epoch: %d, loss: %1.5f" % (epoch, loss.item()))
     print("save model")
     torch.save(lstm.state_dict(), path)
 
 def load_model_TS(path):
-    num_epochs = 1000
-    learning_rate = 0.01
+    num_epochs = 150
+    learning_rate = 0.001
 
     input_size = 1
-    hidden_size = 4
+    hidden_size = 100
     num_layers = 1
 
     num_classes = 1

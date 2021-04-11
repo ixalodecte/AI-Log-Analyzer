@@ -3,6 +3,31 @@ from datetime import timedelta
 from drain3 import TemplateMiner
 from drain3.file_persistence import FilePersistence
 from ailoganalyzer.structure import match
+from pandas import date_range
+
+def train(options):
+    #options["num_classes"] = count_num_line("../data/preprocess/templates.csv")
+    print(options["num_classes"])
+    Model = deeplog(input_size=options['input_size'],
+                    hidden_size=options['hidden_size'],
+                    num_layers=options['num_layers'],
+                    num_keys=options['num_classes'])
+    trainer = Trainer(Model, options)
+    trainer.start_train()
+
+def train_TS(options, system):
+    training_set = pd.read_csv("../data/train/train_TS")
+    training_set = training_set.iloc[:,1:2].values
+    print(training_set)
+    seq, sc = preprocess_TS(training_set,288)
+    with open(options['save_dir'] + options["system"] + "_sc", 'wb') as f1:
+        pickle.dump(sc, f1)
+    #model = timeSerie(365,22,100).to("cuda")
+    train_TS_LSTM(options["save_dir"] + system + "_TS.pth", seq, options)
+    val_set = pd.read_csv("../data/train/normal_TS")
+    val_set = val_set.iloc[:,1:2].values
+    seq_val,_ = preprocess_TS(val_set, 288, sc)
+    intervalle = compute_normal_interval_TS(options["save_dir"] + system + "_TS.pth", seq_val)
 
 def train_db(system, options, date_debut = None, date_fin = None):
     template_file = "../data/preprocess/templates_" + system + ".csv"
@@ -45,8 +70,29 @@ def train_db(system, options, date_debut = None, date_fin = None):
     options["num_classes"] = count_num_line(template_file)
     options['model_path'] = str(options['save_dir'] + "deeplog_last" + system + ".pth")
     options['model_path_TS'] = str(options['save_dir'] + "time_series" + system + ".pth")
-    train()
-    train_TS()
+    train(options)
+
+    # -- entrainement time Series
+    start, end = db.start_end_date(system)
+    dates = date_range(start =start, end = end, periods = "4min")
+    train_dates = dates[:int(len(dates) * 0.7)]
+    val_dates = dates[:int(len(dates) * 0.3)]
+
+    time_serie_train = db.time_serie("logs", train_dates, {"system":system})
+    time_serie_val = db.time_serie("logs", val_dates, {"system":system})
+
+
+    TS_trainn = pd.DataFrame(columns=["time","number"])
+    TS_trainn["time"] = list(time_serie_train.keys())
+    TS_trainn["number"] = list(time_serie_train.values())
+    TS_trainn.to_csv("../data/train/train_TS", index = None)
+
+    TS_val = pd.DataFrame(columns=["time","number"])
+    TS_val["time"] = list(time_serie_val.keys())
+    TS_val["number"] = list(time_serie_val.values())
+    TS_val.to_csv("../data/train/normal_TS", index = None)
+
+    train_TS(options)
     db.set_trained(system)
 
 def analyzer_semantic(system, options):
@@ -115,4 +161,7 @@ def analyzer_semantic(system, options):
         time.sleep(step_size)
 
 def analyzer_TS(system, options):
-    
+    now = datetime.now()
+    dates = date_range(start =now - timedelta(1,0), end = now, periods = "4min")
+    time_serie = db.time_serie("logs", dates, {"system":system})
+    TS = []
