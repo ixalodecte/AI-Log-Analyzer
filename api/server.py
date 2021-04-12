@@ -11,7 +11,7 @@ db = LogLoader("ailoganalyzer_db")
 from datetime import datetime
 from pandas import date_range
 
-user = list(db.find("users", {}))[0]
+user = user ={"username":"admin", "password":"admin"}
 print(user)
 
 # Change le format de la date (pour inclure les microsecondes)
@@ -87,7 +87,12 @@ def logout():
     session['logged_in'] = False
     return home()
 
+@app.route("/visualisation")
+def visualisation():
+    return render_template("visualisation.html")
+
+
 if __name__ == "__main__":
     app.secret_key = os.urandom(12)
     app.run(debug=True,host='0.0.0.0', port=4000)
-#test : http://localhost:5000/api/logs/get?abnormal=True&start_time=2005-06-03-16.12.34.557453&end_time=2005-06-04-03.17.40.435081
+#test : http://localhost:4000/api/logs/get?abnormal=True&start_time=2005-06-03-16.12.34.557453&end_time=2005-06-04-03.17.40.435081
