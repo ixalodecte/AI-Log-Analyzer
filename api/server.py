@@ -92,7 +92,7 @@ def logout():
     session['logged_in'] = False
     return home()
 
-@app.route("/visualisation")
+@app.route("/visualisation.html")
 def visualisation():
     return render_template("visualisation.html")
 
