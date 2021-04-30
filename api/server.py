@@ -4,8 +4,7 @@
 from flask import Flask, request, url_for, jsonify, session, render_template, flash, redirect, abort
 import os
 from flask.json import JSONEncoder
-import calendar
-from database import *
+from database import LogLoader
 app = Flask(__name__)
 db = LogLoader("ailoganalyzer_db")
 from datetime import datetime
@@ -32,7 +31,14 @@ def home():
     if not session.get('logged_in'):
         return render_template('login.html')
     else:
-        return render_template("test.html")
+        param = dict(request.args)
+        if "filters" in param:
+            filters = param["filters"].split(" ")
+            filters = "&".join(filters)
+            filters = "&" + filters
+        else:
+            filters = "&end_time=" + datetime.strftime(datetime.now(),"%Y-%m-%d-%H.%M.%S.%f")
+        return render_template("test.html", filters = filters)
 
 @app.route('/login', methods=['POST'])
 def do_admin_login():
@@ -49,10 +55,9 @@ def api_log(action):
         param = dict(request.args)
         fields = None
         limit = None
-        count = False
 
         if "fields" in param:
-            field = param["fields"].split(",")
+            fields = param["fields"].split(",")
             param.pop("fields")
         if "limit" in param:
             limit = int(param["limit"])

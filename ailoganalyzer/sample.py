@@ -1,15 +1,13 @@
-import os
 import pandas as pd
-import numpy as np
-from datetime import timedelta
 from numpy import arange
 para = {
     "window_size":0.1,
     "step_size":0.1,
     "structured_file":"../data/preprocess/structured.csv",
-    "BGL_sequence":'../data/preprocess/sequence.csv',
+    "BGL_sequence":'data/preprocess/sequence.csv',
     "train_file":"../data/preprocess/train"
 }
+
 
 def load_structured_file(structured_file):
 
@@ -116,9 +114,3 @@ def sampling(bgl_structured, window_size, step_size):
     timestamp_sequence = pd.date_range(start = bgl_structured['time'][0], periods = len(BGL_sequence), freq = delta)
     BGL_sequence['time'] = timestamp_sequence
     BGL_sequence.to_csv(para["BGL_sequence"],date_format = "%Y-%m-%d %H:%M:%S.%f",index=None)
-
-
-
-if __name__ == "__main__":
-    bgl_structured = load_structured_file(para["structured_file"])
-    sampling(bgl_structured,para["window_size"],para["step_size"])

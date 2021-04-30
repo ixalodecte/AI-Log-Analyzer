@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import numpy as np
-import pandas as pd
 import torch
-from torch.utils.data import Dataset, Sampler
+from torch.utils.data import Dataset
 
 
 class log_dataset(Dataset):
@@ -35,14 +33,3 @@ class log_dataset(Dataset):
             log['Semantics'] = torch.tensor(self.Semantics[idx],
                                             dtype=torch.float)
         return log, self.labels[idx]
-
-
-if __name__ == '__main__':
-    data_dir = '../../data/hdfs/hdfs_train'
-    window_size = 10
-    train_logs = prepare_log(data_dir=data_dir,
-                             datatype='train',
-                             window_size=window_size)
-    train_dataset = log_dataset(log=train_logs, seq=True, quan=True)
-    print(train_dataset[0])
-    print(train_dataset[100])

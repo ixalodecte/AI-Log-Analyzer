@@ -1,23 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
-import gc
-import os
 import sys
 import time
-from collections import Counter
 sys.path.append('../../')
 
-import numpy as np
-import pandas as pd
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.utils.data import DataLoader
 from tqdm import tqdm
-
-from ailoganalyzer.dataset.log import log_dataset
-from ailoganalyzer.dataset.sample import session_window, read_json, sliding_window
+from ailoganalyzer.dataset.sample import read_json
 from ailoganalyzer.tools.utils import (save_parameters, seed_everything,
                                  train_val_split)
 
@@ -52,7 +41,7 @@ class Predicter():
         self.quantitatives = options['quantitatives']
         self.semantics = options['semantics']
         self.batch_size = options['batch_size']
-        if self.semantics: self.event2semantic_vec = read_json(self.data_dir + '../preprocess/event2semantic_vec.json')
+        if self.semantics: self.event2semantic_vec = read_json(self.data_dir + '../preprocess/event2semantic_vec_'+ options["system"]+ '.json')
 
     def predict(self, line):
         model = self.model.to(self.device)
@@ -69,8 +58,6 @@ class Predicter():
                         Semantic_pattern.append(tuple(self.event2semantic_vec[str(event)]))
             seq0 = Semantic_pattern
             label = line[i + self.window_size]
-            seq1 = [0] * self.num_classes
-            log_conuter = Counter(seq0)
             #for key in log_conuter:
             #    seq1[key] = log_conuter[key]
 

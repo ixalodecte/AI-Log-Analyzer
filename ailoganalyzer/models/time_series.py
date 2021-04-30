@@ -1,7 +1,5 @@
 import pickle
-from adtk.data import validate_series
-from adtk.detector import SeasonalAD, LevelShiftAD, PersistAD, VolatilityShiftAD, AutoregressionAD
-from pylab import show, where, append, sort
+from pylab import where, append, sort
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 import torch
@@ -43,7 +41,7 @@ def preprocess_TS(training_set, seq_length, sc = None):
     return (dataX,dataY), sc
 
 def train_TS_LSTM(path, dataX, options):
-    num_epochs = 300
+    num_epochs = 100
     learning_rate = 0.001
 
     input_size = 1
@@ -77,8 +75,6 @@ def train_TS_LSTM(path, dataX, options):
     torch.save(lstm.state_dict(), path)
 
 def load_model_TS(path):
-    num_epochs = 150
-    learning_rate = 0.001
 
     input_size = 1
     hidden_size = 100

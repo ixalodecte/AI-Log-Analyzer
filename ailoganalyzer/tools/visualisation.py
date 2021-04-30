@@ -1,4 +1,4 @@
-from pylab import *
+from pylab import show
 import pandas as pd
 
 def structured_to_time_serie(seq_filename):

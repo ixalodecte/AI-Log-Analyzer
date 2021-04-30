@@ -1,4 +1,8 @@
-from ailoganalyzer.dataset.utils_semantic_vec import *
+from ailoganalyzer.dataset.utils_semantic_vec import read_json, dump_2_json,load_vectors, data_read_template, camel_to_snake, replace_all_blank, lemmatize_stop
+import numpy as np
+import pandas as pd
+from collections import Counter
+import math
 
 def calcul_TFIDF():
     eventid2template = read_json("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess/eventid2template.json")
@@ -56,7 +60,6 @@ def import_word_vec():
     return fasttext
 
 def template_to_vec(word_vec, template):
-    event2semantic_vec = read_json('/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess/event2semantic_vec.json')
     vec = line_to_vec(word_vec, [template], train = False)
     return vec["0"]
 
@@ -101,7 +104,6 @@ def line_to_vec(word_vec, data, train=True):
         if word in fasttext:
             template_fasttext_map[word] = list(fasttext[word])
 
-    fasttext_map = template_fasttext_map
 
     #2 ..
     dump_2_json(template_fasttext_map,'/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess/fasttext_map.json')

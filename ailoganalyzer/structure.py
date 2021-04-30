@@ -7,13 +7,7 @@ import pandas as pd
 from tqdm import tqdm
 import fnmatch
 from collections import defaultdict
-import numpy as np
 
-para = {
-    "data":"../data/bgl2_100k",
-    "template":"../data/preprocess/templates.csv",
-    "structured_file":"../data/preprocess/structured.csv"}
-# read origin logs
 
 def information_extractor(line, log_structure):
     info = {
@@ -24,7 +18,7 @@ def information_extractor(line, log_structure):
     separator = log_structure["separator"]
     if separator:
         line = line.split(separator)
-        info["message"] = " ".join(line[log_structure["message_start_index"] : log_structure["message_end_index"]])
+        info["message"] = " ".join(line[log_structure["message_start_index"]: log_structure["message_end_index"]])
         #print(line[log_structure["time_index"]])
         info["time"] = line[log_structure["time_index"]]
 
@@ -40,7 +34,6 @@ def information_extractor(line, log_structure):
 
 def data_read(filepath, log_structure):
     fp = open(filepath, "r")
-    datas = []
     lines = fp.readlines()
 
     data = defaultdict(list)
@@ -91,7 +84,6 @@ def structure(data, template):
         event2id[event_template] = event_id
         event.append(event_template)
 
-    error_log = []
     eventmap = []
     print("Matching...")
     for log in tqdm(data["message"]):
@@ -100,8 +92,6 @@ def structure(data, template):
 
 def save_structured(data, eventmap, filename):
     # extract label, time and origin event
-    label = []
-    time = []
 
     data_structured = pd.DataFrame(columns=["label","time","event_id"])
     data_structured["label"] = data["label"]
@@ -120,17 +110,3 @@ def structure_log(in_log_file, log_structure, out_structured_file, template_file
     data = data_read(in_log_file, log_structure["separator"])
     eventmap = match(data, template_file)
     structure(data,eventmap, out_structured_file)
-
-
-if __name__ == "__main__":
-    log_structure = {
-        "separator" : None,          # separateur entre les champs d'une ligne
-        "time_index" : 4,           # index timestamp
-        "message_start_index" : 9,  # debut message
-        "message_end_index" : None, # fin message
-        "label_index" : 0           # index label (None si aucun)
-    }
-    data = data_read(para["data"], log_structure)
-
-    eventmap = structure(data, log_structure, para["template"])
-    save(data, log_structure, eventmap, para["structured_file"])

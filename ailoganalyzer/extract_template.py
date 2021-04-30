@@ -1,25 +1,18 @@
 import json
 import logging
-import os
-import subprocess
 import sys
 import time
-import fnmatch
 import pandas as pd
 
 from drain3 import TemplateMiner
 from drain3.file_persistence import FilePersistence
 
 
-
-
-def log2template(lines, out_file, log_structure = None):
-    persistence = FilePersistence("../data/preprocess/templates_persist.bin")
+def log2template(lines, out_file, options, log_structure = None):
+    persistence = FilePersistence(options["preprocess_dir"] + "templates_persist_"+options["system"]+".bin")
 
     logger = logging.getLogger(__name__)
     logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(message)s')
-
-
 
     template_miner = TemplateMiner(persistence)
 
@@ -41,6 +34,7 @@ def log2template(lines, out_file, log_structure = None):
                         f"{len(template_miner.drain.clusters)} clusters so far.")
             batch_start_time = time.time()
         if result["change_type"] != "none":
+            print(result)
             result_json = json.dumps(result)
             logger.info(f"Input ({line_count}): " + line)
             logger.info("Result: " + result_json)
@@ -63,16 +57,3 @@ def log2template(lines, out_file, log_structure = None):
     template_df = template_df.sort_values(by = ["EventId"])
     template_df.to_csv(out_file, index = None)
     return len(sorted_clusters)
-
-if __name__ == '__main__':
-    in_log_file = "../data/bgl2_100k"
-    out_file = "../data/preprocess/templates.csv"
-    log_structure = {
-        "separator" : None,          # separateur entre les champs d'une ligne
-        "time_index" : 4,           # index timestamp
-        "message_start_index" : 9,  # debut message
-        "message_end_index" : None, # fin message
-        "label_index" : 0           # index label (None si aucun)
-    }
-    num=log2template(in_log_file, log_structure, out_file)
-    print(num)

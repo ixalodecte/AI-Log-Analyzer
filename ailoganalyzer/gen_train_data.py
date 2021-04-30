@@ -1,6 +1,5 @@
-import os
 import pandas as pd
-from pylab import *
+from pylab import where, delete, append
 from sklearn.model_selection import train_test_split
 
 def save(filename, liste):
@@ -11,13 +10,13 @@ def save(filename, liste):
                 #if not l.isspace():
             the_file.write(l + "\n")
 
-def gen_train_test(test_prop, val_prop = 0.2, include_blank = False, train_with_abnormal = False):
+def gen_train_test(test_prop, options, val_prop = 0.2, include_blank = False, train_with_abnormal = False):
     para = {
-        "sequence_file": "../data/preprocess/sequence.csv",
-        "train_file": "../data/train/train",
-        "val_file" : "../data/train/normal",
-        "abnormal_file": "../data/train/test_abnormal",
-        "normal_file": "../data/train/test_normal"
+        "sequence_file": options["preprocess_dir"]+"sequence.csv",
+        "train_file": options["train_dir"] + "train",
+        "val_file" :options["train_dir"]+ "normal",
+        "abnormal_file": options["train_dir"]+"test_abnormal",
+        "normal_file":options["train_dir"]+ "test_normal"
     }
     sequence_label = pd.read_csv(para["sequence_file"])
     sequence = sequence_label["sequence"].values  # les sequences
