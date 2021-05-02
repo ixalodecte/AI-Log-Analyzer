@@ -18,9 +18,9 @@ def information_extractor(line, log_structure):
         except ValueError:
             print("format invalide")
             return {}
+        if log_structure["label_index"] != None:
+            info["abnormal"] = line[log_structure["label_index"]] != "-" 
 
-
-        info["abnormal"] = False
     else:
         info["message"] = line
     return info
