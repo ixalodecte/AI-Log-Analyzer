@@ -66,6 +66,8 @@ def api_log(action):
             param["start_time"] = datetime.strptime(param["start_time"],"%Y-%m-%d-%H.%M.%S.%f")
         if "end_time" in param:
             param["end_time"] = datetime.strptime(param["end_time"],"%Y-%m-%d-%H.%M.%S.%f")
+        else:
+            param["end_time"] = datetime.now()
         if "abnormal" in param:
             param["abnormal"] = (param["abnormal"] == "True")
 
