@@ -3,58 +3,63 @@
 
 import gc
 import os
-import sys
 import time
-sys.path.append('../../')
-
 import pandas as pd
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+from sklearn.model_selection import train_test_split
 
 from ailoganalyzer.dataset.log import log_dataset
 from ailoganalyzer.dataset.sample import sliding_window, session_window
-from ailoganalyzer.tools.utils import (save_parameters, seed_everything,
-                                 train_val_split)
 
 
 class Trainer():
-    def __init__(self, model, options):
-        self.model_name = options['model_name']
-        self.save_dir = options['save_dir']
-        self.data_dir = options['data_dir']
-        self.window_size = options['window_size']
-        self.batch_size = options['batch_size']
+    def __init__(self, model, log_loader, system, model_name, window_size, model_path, device = "cuda", lr_step = (4,5), lr_decay_ratio = 0.1):
+        print("start training for ", system, "model", model_name)
+        self.log_loader = log_loader
+        self.model_name = model_name
+        self.save_dir = "result"
+        self.window_size = window_size
+        self.batch_size = 256
+        self.lr = 0.001
 
-        self.device = options['device']
-        self.lr_step = options['lr_step']
-        self.lr_decay_ratio = options['lr_decay_ratio']
-        self.accumulation_step = options['accumulation_step']
-        self.max_epoch = options['max_epoch']
+        self.optimizer_fun = 'sgd'
 
-        self.sequentials = options['sequentials']
-        self.quantitatives = options['quantitatives']
-        self.semantics = options['semantics']
-        self.sample = options['sample']
-        self.feature_num = options['feature_num']
-        self.num_classes = options['num_classes']
+        self.device = device
+        self.lr_step = lr_step
+        self.lr_decay_ratio = lr_decay_ratio
+        self.accumulation_step = 1
+        self.max_epoch = 6
+
+        self.sequentials = False
+        self.quantitatives = False
+        self.semantics = True
+        self.sample = "sliding_window"
+        #self.feature_num = options['feature_num']
+        self.num_classes = log_loader.get_number_classes(system)
+        self.system = system
+        self.model_path = model_path
 
 
         os.makedirs(self.save_dir, exist_ok=True)
+        sequences = log_loader.get_sequences(system, 1800)
+        train_seq, val_seq = train_test_split(sequences, train_size=0.8)
         if self.sample == 'sliding_window':
-            train_logs, train_labels = sliding_window(self.data_dir,
-                                                      self.num_classes,
-                                                  datatype='train',
-                                                  window_size=self.window_size,
-                                                  system = options["system"])
-            print("eauinsrteuinrs", len(train_logs["Semantics"][0]), "label", train_labels[0])
-            val_logs, val_labels = sliding_window(self.data_dir,
-                                                  self.num_classes,
-                                              datatype='val',
-                                              window_size=self.window_size,
-                                              sample_ratio=1,
-                                              system = options["system"])
+            train_logs, train_labels = sliding_window(
+                                            self.log_loader,
+                                            train_seq,
+                                            self.num_classes,
+                                            self.window_size,
+                                            system = self.system)
+            val_logs, val_labels = sliding_window(
+                                            self.log_loader,
+                                            val_seq,
+                                            self.num_classes,
+                                            self.window_size,
+                                            system = self.system)
+            print("end slidding")
         elif self.sample == 'session_window':
             train_logs, train_labels = session_window(self.data_dir,
                                                       self.num_classes,
@@ -95,18 +100,18 @@ class Trainer():
         print('Find %d train logs, %d validation logs' %
               (self.num_train_log, self.num_valid_log))
         print('Train batch size %d ,Validation batch size %d' %
-              (options['batch_size'], options['batch_size']))
+              (self.batch_size, self.batch_size))
 
         self.model = model.to(self.device)
 
-        if options['optimizer'] == 'sgd':
+        if self.optimizer_fun == 'sgd':
             self.optimizer = torch.optim.SGD(self.model.parameters(),
-                                             lr=options['lr'],
+                                             lr=self.lr,
                                              momentum=0.9)
-        elif options['optimizer'] == 'adam':
+        elif self.optimizer_fun == 'adam':
             self.optimizer = torch.optim.Adam(
                 self.model.parameters(),
-                lr=options['lr'],
+                lr=self.lr,
                 betas=(0.9, 0.999),
             )
         else:
@@ -115,18 +120,18 @@ class Trainer():
         self.start_epoch = 0
         self.best_loss = 1e10
         self.best_score = -1
-        save_parameters(options, self.save_dir + "parameters.txt")
+        #save_parameters(options, self.save_dir + "parameters.txt")
         self.log = {
             "train": {key: []
                       for key in ["epoch", "lr", "time", "loss"]},
             "valid": {key: []
                       for key in ["epoch", "lr", "time", "loss"]}
         }
-        if options['resume_path'] is not None:
-            if os.path.isfile(options['resume_path']):
-                self.resume(options['resume_path'], load_optimizer=True)
-            else:
-                print("Checkpoint not found")
+        #if options['resume_path'] is not None:
+        #    if os.path.isfile(options['resume_path']):
+        #        self.resume(options['resume_path'], load_optimizer=True)
+        #    else:
+        #        print("Checkpoint not found")
 
     def resume(self, path, load_optimizer=True):
         print("Resuming from {}".format(path))
@@ -140,7 +145,7 @@ class Trainer():
             print("Loading optimizer state dict")
             self.optimizer.load_state_dict(checkpoint['optimizer'])
 
-    def save_checkpoint(self, epoch, save_optimizer=True, suffix=""):
+    def save_checkpoint(self, epoch, save_optimizer=True, suffix="", saveLast=False):
         checkpoint = {
             "epoch": epoch,
             "state_dict": self.model.state_dict(),
@@ -150,7 +155,10 @@ class Trainer():
         }
         if save_optimizer:
             checkpoint['optimizer'] = self.optimizer.state_dict()
-        save_path = self.save_dir + self.model_name + "_" + suffix + ".pth"
+        if saveLast:
+            save_path = self.model_path
+        else:
+            save_path = self.save_dir + self.model_name + "_" + self.system + "_" + suffix + ".pth"
         torch.save(checkpoint, save_path)
         print("Save model checkpoint at {}".format(save_path))
 
@@ -236,5 +244,5 @@ class Trainer():
                 self.save_checkpoint(epoch,
                                      save_optimizer=True,
                                      suffix="epoch" + str(epoch))
-            self.save_checkpoint(epoch, save_optimizer=True, suffix="last")
+            self.save_checkpoint(epoch, save_optimizer=True, saveLast=True)
             self.save_log()

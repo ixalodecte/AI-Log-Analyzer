@@ -12,13 +12,11 @@ import io
 from tqdm import tqdm
 
 
-#options = {}
-#options["preprocess_dir"] = "/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/preprocess"
-
 def read_json(filename):
     with open(filename, 'r') as load_f:
         file_dict = json.load(load_f)
     return file_dict
+
 
 def data_read_template(filepath):
     fp = open(filepath, "r")
@@ -32,6 +30,7 @@ def data_read_template(filepath):
         i = i + 1
     fp.close()
     return datas
+
 
 def camel_to_snake(name):
     """
@@ -55,6 +54,8 @@ def replace_all_blank(value):
     return result
 # https://github.com/explosion/spaCy
 # https://github.com/hamelsmu/Seq2Seq_Tutorial/issues/1
+
+
 def lemmatize_stop(text):
     """
     https://stackoverflow.com/questions/45605946/how-to-do-text-pre-processing-using-spacy
@@ -66,6 +67,7 @@ def lemmatize_stop(text):
     # lemmas = [token.lemma_ for token in document if not token.is_stop]
     lemmas = [token.text for token in document if not token.is_stop]
     return lemmas
+
 
 def dump_2_json(dump_dict, target_path):
     '''
@@ -83,6 +85,7 @@ def dump_2_json(dump_dict, target_path):
     file.write(json.dumps(dump_dict, cls=MyEncoder, indent=4))
     file.close()
 
+
 # https://github.com/facebookresearch/fastText/blob/master/docs/crawl-vectors.md
 def load_vectors(fname):
     fin = io.open(fname, 'r', encoding='utf-8', newline='\n', errors='ignore')
@@ -92,9 +95,3 @@ def load_vectors(fname):
         tokens = line.rstrip().split(' ')
         data[tokens[0]] = np.array(tokens[1:], dtype=np.float)
     return data
-
-
-
-
-
-#fasttext = load_vectors('/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/cc.en.300.vec')

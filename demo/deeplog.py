@@ -103,7 +103,7 @@ def preprocess():
     # 1. Extraction des templates
     if not os.path.isfile(para["template_file"]):
         with open(para["log_file"]) as f:
-            num = log2template(f, para["template_file"], log_structure)
+            num = log2template(f, para["template_file"], "hello", log_structure)
             options['num_classes'] = num
 
     # 2. Matching des logs avec les templates.
@@ -150,18 +150,20 @@ def split():
     gen_train_test(0.3)
 
 def train_TS():
-    training_set = pd.read_csv("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/xaa")
+    training_set = pd.read_csv("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/iio_us-east-1_i-a2eb1cd9_NetworkIn.csv")
     training_set = training_set.iloc[:,1:2].values
     print(training_set)
-    seq, sc = preprocess_TS(training_set,288)
-    with open("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/result/deeplog/sc" + options["system"], 'wb') as f1:
+    seq, sc = preprocess_TS(training_set,70)
+    with open("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/result/ailoganalyzer/sc" + options["system"], 'wb') as f1:
         pickle.dump(sc, f1)
     #model = timeSerie(365,22,100).to("cuda")
     train_TS_LSTM(options["model_path_TS"], seq, options)
-    val_set = pd.read_csv("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/val")
+    val_set = pd.read_csv("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/iio_us-east-1_i-a2eb1cd9_NetworkIn.csv")
     val_set = val_set.iloc[:,1:2].values
-    seq_val,_ = preprocess_TS(val_set, 288, sc)
+    seq_val,_ = preprocess_TS(val_set, 70, sc)
     intervalle = compute_normal_interval_TS(options["model_path_TS"], seq_val)
+    with open("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/result/ailoganalyzer/intervalle" + options["system"], 'wb') as f1:
+        pickle.dump(intervalle, f1)
 
     #t = TimeSerie()
     #print(s_train)
@@ -172,13 +174,15 @@ def train_TS():
 
 def test_TS():
 
-    training_set = pd.read_csv("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/testt")
+    training_set = pd.read_csv("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/iio_us-east-1_i-a2eb1cd9_NetworkIn.csv")
     training_set = training_set.iloc[:,1:2].values
 
     print(training_set)
-    with open("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/result/deeplog/sc", 'rb') as f1:
+    with open("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/result/ailoganalyzer/sc", 'rb') as f1:
         sc = pickle.load(f1)
-    seq_train,_ = preprocess_TS(training_set, 288, sc)
+    with open("/home/kangourou/gestionDeProjet/AI-Log-Analyzer/result/ailoganalyzer/intervalle", 'rb') as f1:
+        intervalle = pickle.load(f1)
+    seq_train,_ = preprocess_TS(training_set, 70, sc)
 
     test_TS_LSTM(options["model_path_TS"], seq_train,sc, intervalle)
 
