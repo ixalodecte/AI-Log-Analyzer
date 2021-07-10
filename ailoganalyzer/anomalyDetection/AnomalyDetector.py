@@ -1,5 +1,5 @@
 class AnomalyDetector():
-    def __init__(self, log_loader, model_name):
+    def __init__(self, model_name, log_loader):
         self.log_loader = log_loader
         self.model_name = model_name
 
@@ -18,3 +18,6 @@ class AnomalyDetector():
 
     def initialize_model(self):
         raise NotImplementedError
+
+    def set_dataLoader_training(self, log_loader):
+        pass

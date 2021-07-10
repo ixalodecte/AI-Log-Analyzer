@@ -1,29 +1,38 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import gc
 import os
 import time
 import pandas as pd
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
 from tqdm import tqdm
-from sklearn.model_selection import train_test_split
-
-from ailoganalyzer.dataset.log import log_dataset
-from ailoganalyzer.dataset.sample import sliding_window, session_window
 
 
 class Trainer():
-    def __init__(self, model, log_loader, system, model_name, window_size, model_path, device = "cuda", lr_step = (4,5), lr_decay_ratio = 0.1):
+    is_available = True
+
+    def __init__(self,
+                 model,
+                 train_loader,
+                 valid_loader,
+                 num_classes,
+                 system,
+                 model_name,
+                 window_size,
+                 model_path,
+                 device="cuda",
+                 lr_step=(80, 90),
+                 lr_decay_ratio=0.1,
+                 lr=0.001,
+                 max_epoch=100):
         print("start training for ", system, "model", model_name)
-        self.log_loader = log_loader
+        self.train_loader = train_loader
+        self.valid_loader = valid_loader
         self.model_name = model_name
         self.save_dir = "result"
         self.window_size = window_size
-        self.batch_size = 256
-        self.lr = 0.001
+        self.lr = lr
 
         self.optimizer_fun = 'sgd'
 
@@ -31,76 +40,23 @@ class Trainer():
         self.lr_step = lr_step
         self.lr_decay_ratio = lr_decay_ratio
         self.accumulation_step = 1
-        self.max_epoch = 6
+        self.max_epoch = max_epoch
 
         self.sequentials = False
         self.quantitatives = False
         self.semantics = True
         self.sample = "sliding_window"
-        #self.feature_num = options['feature_num']
-        self.num_classes = log_loader.get_number_classes(system)
+        self.num_classes = num_classes
         self.system = system
         self.model_path = model_path
 
-
         os.makedirs(self.save_dir, exist_ok=True)
-        sequences = log_loader.get_sequences(system, 1800)
-        train_seq, val_seq = train_test_split(sequences, train_size=0.8)
-        if self.sample == 'sliding_window':
-            train_logs, train_labels = sliding_window(
-                                            self.log_loader,
-                                            train_seq,
-                                            self.num_classes,
-                                            self.window_size,
-                                            system = self.system)
-            val_logs, val_labels = sliding_window(
-                                            self.log_loader,
-                                            val_seq,
-                                            self.num_classes,
-                                            self.window_size,
-                                            system = self.system)
-            print("end slidding")
-        elif self.sample == 'session_window':
-            train_logs, train_labels = session_window(self.data_dir,
-                                                      self.num_classes,
-                                                      datatype='train')
-            val_logs, val_labels = session_window(self.data_dir,
-                                                  self.num_classes,
-                                                  datatype='val')
-        else:
-            raise NotImplementedError
 
-        train_dataset = log_dataset(logs=train_logs,
-                                    labels=train_labels,
-                                    seq=self.sequentials,
-                                    quan=self.quantitatives,
-                                    sem=self.semantics)
-        valid_dataset = log_dataset(logs=val_logs,
-                                    labels=val_labels,
-                                    seq=self.sequentials,
-                                    quan=self.quantitatives,
-                                    sem=self.semantics)
-
-        del train_logs
-        del val_logs
-        gc.collect()
-
-        self.train_loader = DataLoader(train_dataset,
-                                       batch_size=self.batch_size,
-                                       shuffle=True,
-                                       pin_memory=True)
-        self.valid_loader = DataLoader(valid_dataset,
-                                       batch_size=self.batch_size,
-                                       shuffle=False,
-                                       pin_memory=True)
-
-        self.num_train_log = len(train_dataset)
-        self.num_valid_log = len(valid_dataset)
+        self.num_train_log = len(self.train_loader)
+        self.num_valid_log = len(self.valid_loader)
 
         print('Find %d train logs, %d validation logs' %
               (self.num_train_log, self.num_valid_log))
-        print('Train batch size %d ,Validation batch size %d' %
-              (self.batch_size, self.batch_size))
 
         self.model = model.to(self.device)
 

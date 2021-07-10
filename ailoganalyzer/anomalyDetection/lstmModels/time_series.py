@@ -9,14 +9,16 @@ import numpy as np
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
 def create_inout_sequences(input_data, tw):
     inout_seq = []
     L = len(input_data)
     for i in range(L-tw):
         train_seq = input_data[i:i+tw]
         train_label = input_data[i+tw:i+tw+1]
-        inout_seq.append((train_seq ,train_label))
+        inout_seq.append((train_seq, train_label))
     return inout_seq
+
 
 def sliding_windows(data, seq_length):
     x = []
@@ -28,17 +30,19 @@ def sliding_windows(data, seq_length):
         x.append(_x)
         y.append(_y)
 
-    return np.array(x),np.array(y)
+    return np.array(x), np.array(y)
 
-def preprocess_TS(training_set, seq_length, sc = None):
-    if sc == None:
+
+def preprocess_TS(training_set, seq_length, sc=None):
+    if sc is None:
         sc = MinMaxScaler()
     training_data = sc.fit_transform(training_set)
     x, y = sliding_windows(training_data, seq_length)
 
     dataX = Variable(torch.Tensor(np.array(x)).to(device))
     dataY = Variable(torch.Tensor(np.array(y)).to(device))
-    return (dataX,dataY), sc
+    return (dataX, dataY), sc
+
 
 def train_TS_LSTM(path, dataX, options):
     num_epochs = 100
@@ -50,7 +54,6 @@ def train_TS_LSTM(path, dataX, options):
 
     num_classes = 1
     trainX, trainY = dataX
-
 
     lstm = timeSerie(num_classes, input_size, hidden_size, num_layers).to(device)
 
@@ -74,6 +77,7 @@ def train_TS_LSTM(path, dataX, options):
     print("save model")
     torch.save(lstm.state_dict(), path)
 
+
 def load_model_TS(path):
 
     input_size = 1
@@ -87,7 +91,8 @@ def load_model_TS(path):
     lstm.to(device)
     return lstm
 
-def test_TS_LSTM(path, data, sc, intervalle = []):
+
+def test_TS_LSTM(path, data, sc, intervalle=[]):
 
     dataX, dataY = data
     print(dataX)
@@ -113,9 +118,10 @@ def test_TS_LSTM(path, data, sc, intervalle = []):
 
     plt.plot(dataY_plot)
     plt.plot(data_predict)
-    plt.scatter(anomalyX,anomalyY, color="red")
+    plt.scatter(anomalyX, anomalyY, color="red")
     plt.suptitle('Time-Series Prediction')
     plt.show()
+
 
 def compute_normal_interval_TS(path, data):
     dataX, dataY = data
@@ -125,10 +131,11 @@ def compute_normal_interval_TS(path, data):
     data_predict = prediction.cpu().data.numpy()
     data_true = dataY.cpu().data.numpy()
     error_matrix = data_predict - data_true
-    error_matrix = sort(error_matrix.reshape(1,-1)[0])
+    error_matrix = sort(error_matrix.reshape(1, -1)[0])
     print(error_matrix)
     sep = int(len(error_matrix) * 0.0)
     return error_matrix[sep], error_matrix[len(error_matrix)-sep-1]
+
 
 class timeSerie(nn.Module):
 
@@ -163,10 +170,10 @@ class timeSerie(nn.Module):
         return out
 
 
-
 def save_time_serie(time_serie, filename):
     with open(filename, 'wb') as f:
         pickle.dump(time_serie, f)
+
 
 def load_time_serie(filename):
     with open(filename, 'rb') as f:
