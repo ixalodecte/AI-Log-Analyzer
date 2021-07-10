@@ -13,14 +13,14 @@ def calcul_TFIDF(template, word_count):
     # TF:
     word_counter = Counter(template)
     l_template = len(template)
-    tf_map = {word : (count / l_template) for word, count in word_counter.items()}
+    tf_map = {word: (count / l_template) for word, count in word_counter.items()}
 
     # IDF:
     word_num = sum(word_count.values())
-    idf_map = {word : math.log(word_num / word_count[word]) for word in set(template)}
+    idf_map = {word: math.log(word_num / word_count[word]) for word in set(template)}
 
     # TF_IDF:
-    tf_idf = {word : tf * idf for word, tf, idf in zip(tf_map, tf_map.values(), idf_map.values())}
+    tf_idf = {word: tf * idf for word, tf, idf in zip(tf_map, tf_map.values(), idf_map.values())}
 
     return tf_idf
 
@@ -31,7 +31,7 @@ def import_word_vec():
 
 
 def template_to_vec(word_vec, template):
-    vec = line_to_vec(word_vec, [template], train = False)
+    vec = line_to_vec(word_vec, [template], train=False)
     return vec["0"]
 
 

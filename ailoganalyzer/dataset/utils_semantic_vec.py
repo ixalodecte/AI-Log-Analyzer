@@ -11,6 +11,8 @@ import numpy as np
 import io
 from tqdm import tqdm
 
+nlp = spacy.load('en_core_web_sm')
+
 
 def read_json(filename):
     with open(filename, 'r') as load_f:
@@ -42,13 +44,7 @@ def camel_to_snake(name):
 
 
 def replace_all_blank(value):
-    """
-    去除value中的所有非字母内容，包括标点符号、空格、换行、下划线等
-    :param value: 需要处理的内容
-    :return: 返回处理后的内容
-    # https://juejin.im/post/5d50c132f265da03de3af40b
-    # \W 表示匹配非数字字母下划线
-    """
+
     result = re.sub('\W+', ' ', value).replace("_", ' ')
     result = re.sub('\d',' ',result)
     return result
@@ -60,7 +56,6 @@ def lemmatize_stop(text):
     """
     https://stackoverflow.com/questions/45605946/how-to-do-text-pre-processing-using-spacy
     """
-    nlp = spacy.load('en_core_web_sm')
 
 #    nlp = spacy.load('en_core_web_sm')
     document = nlp(text)
