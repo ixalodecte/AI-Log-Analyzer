@@ -1,17 +1,15 @@
 from datetime import datetime
 from datetime import timedelta
 from sklearn.model_selection import train_test_split
-
-from ailoganalyzer.dataset.log import log_dataset
-from ailoganalyzer.dataset.sample import sliding_window
+import torch
+from torch.multiprocessing import Process, set_start_method
 from torch.utils.data import DataLoader
 
 from ailoganalyzer.anomalyDetection.lstmModels.lstm import robustlog
-from ailoganalyzer.database.dataLoader import LogLoader
 from ailoganalyzer.tools.train import Trainer
 from ailoganalyzer.anomalyDetection.AnomalyDetector import AnomalyDetector
-import torch
-from torch.multiprocessing import Process, set_start_method
+from ailoganalyzer.dataset.sample import sliddingWindowDataset
+
 try:
     set_start_method('spawn')
 except RuntimeError:
@@ -40,6 +38,7 @@ class LSTMLogSequence(AnomalyDetector):
                                    hidden_size=128,
                                    num_layers=2,
                                    num_keys=self.log_loader.get_number_classes(self.system))
+            self.input_size = 300
         self.model_path = "result/" + self.model_name + "_" + self.system + "_" + "last.pth"
 
     def is_trainable(self):
@@ -67,19 +66,29 @@ class LSTMLogSequence(AnomalyDetector):
         return p
 
     def set_dataLoader_training(self):
-        sequences = self.log_loader.get_sequences(self.system, 300)
-        train_seq, val_seq = train_test_split(sequences, train_size=0.8)
+        sequences, labels, _ = self.log_loader.get_last_sequence(self.system, self.model_name, self.window_size)
+
+        train_seq, val_seq, train_label, val_label = train_test_split(sequences, labels, train_size=0.8)
+        print("number train sequences :", train_seq.shape)
+        print("number val sequences :", val_seq.shape)
         self.num_classes = self.log_loader.get_number_classes(self.system)
-        train_dataset = sliding_window(
-                                        self.log_loader,
-                                        train_seq,
-                                        self.window_size,
-                                        system=self.system)
-        valid_dataset = sliding_window(
-                                        self.log_loader,
-                                        val_seq,
-                                        self.window_size,
-                                        system=self.system)
+        event2vec = self.log_loader.template_to_vec_all(self.system)
+
+        train_dataset = sliddingWindowDataset(train_seq,
+                                              train_label,
+                                              self.window_size,
+                                              event2vec,
+                                              seq=self.sequentials,
+                                              quan=self.quantitatives,
+                                              sem=self.semantic)
+        valid_dataset = sliddingWindowDataset(val_seq,
+                                              val_label,
+                                              self.window_size,
+                                              event2vec,
+                                              seq=self.sequentials,
+                                              quan=self.quantitatives,
+                                              sem=self.semantic)
+
         print("num_classes :: ", self.num_classes)
 
         print("end slidding")
@@ -94,36 +103,38 @@ class LSTMLogSequence(AnomalyDetector):
                                        pin_memory=True)
 
     def predict(self):
-        line, ids = self.log_loader.get_last_sequence(self.system, 1800)
+        line, label, ids = self.log_loader.get_last_sequence(self.system,
+                                                             self.model_name,
+                                                             self.window_size,
+                                                             get_ids=True)
+        event2vec = self.log_loader.template_to_vec_all(self.system)
+        dataset = sliddingWindowDataset(line,
+                                        label,
+                                        self.window_size,
+                                        event2vec,
+                                        seq=self.sequentials,
+                                        quan=self.quantitatives,
+                                        sem=self.semantic)
 
         model = self.model.to(self.device)
         model.load_state_dict(torch.load(self.model_path)['state_dict'])
         model.eval()
 
-        for i in range(len(line) - self.window_size):
-            seq0 = line[i:i + self.window_size]
-            if self.semantics:
-                Semantic_pattern = []
-                for event in seq0:
-                    if event == -1:
-                        Semantic_pattern.append(tuple([-1] * 300))
-                    else:
-                        self.event2semantic_vec = self.log_loader.template_to_vec_all(self.system)
-                        Semantic_pattern.append(tuple(self.event2semantic_vec[str(event)]))
-                seq0 = Semantic_pattern
-
-            label = line[i + self.window_size]
-            # quantitatives
-            #for key in log_conuter:
-            #    seq1[key] = log_conuter[key]
+        for i in range(len(dataset)):
+            data, label = dataset[i]
+            seq0 = data["Semantics"]
 
             seq0 = torch.tensor(seq0, dtype=torch.float).view(
                 -1, self.window_size, self.input_size).to(self.device)
-            #seq1 = torch.tensor(seq1, dtype=torch.float).view(
+            # seq1 = torch.tensor(seq1, dtype=torch.float).view(
             #    -1, self.num_classes, self.input_size).to(self.device)
             label = torch.tensor(label).view(-1).to(self.device)
             output = model(features=[seq0, []], device=self.device)
             predicted = torch.argsort(output,
                                       1)[0][-self.num_candidates:]
+            abnormal = list()
             if label not in predicted:
-                self.log_loader.set_abnormal_log(self.system, ids[i+self.window_size])
+                abnormal.append(i+self.window_size)
+            for i in abnormal:
+                self.log_loader.set_abnormal_log(self.system, ids[i])
+        return abnormal

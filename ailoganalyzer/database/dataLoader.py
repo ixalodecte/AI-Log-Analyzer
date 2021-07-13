@@ -15,6 +15,7 @@ class LogLoader():
         for system in self.systems:
             persistence = FilePersistence("data/preprocess/templates_persist_" + system + ".bin")
             self.template_miners[system] = TemplateMiner(persistence)
+        self.last_id = defaultdict(dict)
 
     def add_system(self, system):
         raise NotImplementedError
@@ -25,34 +26,34 @@ class LogLoader():
     def count_log(self, system, start_time, end_time):
         raise NotImplementedError
 
-    def set_trained(self, system : str):
+    def set_trained(self, system: str):
         raise NotImplementedError
 
-    def is_trained(self, system : str) -> bool:
+    def is_trained(self, system: str) -> bool:
         raise NotImplementedError
 
     def get_systems(self):
         raise NotImplementedError
 
-    def set_abnormal_log(self, system : str, line):
+    def set_abnormal_log(self, system: str, line):
         raise NotImplementedError
 
-    def start_end_date(self, system : str):
+    def start_end_date(self, system: str):
         raise NotImplementedError
 
-    def get_last_sequence(self, system, windows_size):
+    def get_last_sequence(self, system, model_name, window_size):
         raise NotImplementedError
 
     def get_sequences(self, windows_size):
         raise NotImplementedError
 
-    def get_templates(self, system : str):
+    def get_templates(self, system: str):
         return (c.get_template() for c in self.template_miners[system].drain.clusters)
 
     def get_number_classes(self, system):
         return len(list(self.get_templates(system))) + 1
 
-    def add_log(self, system : str, line : str, date):
+    def add_log(self, system: str, line: str, date):
         if system not in self.systems:
             self.systems.append(system)
 

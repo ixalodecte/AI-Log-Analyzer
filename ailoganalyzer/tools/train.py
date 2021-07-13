@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 import os
 import time
 import pandas as pd
@@ -114,7 +111,7 @@ class Trainer():
         if saveLast:
             save_path = self.model_path
         else:
-            save_path = self.save_dir + self.model_name + "_" + self.system + "_" + suffix + ".pth"
+            save_path = self.save_dir + "/" + self.model_name + "_" + self.system + "_" + suffix + ".pth"
         torch.save(checkpoint, save_path)
         print("Save model checkpoint at {}".format(save_path))
 

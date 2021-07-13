@@ -1,8 +1,8 @@
 import pymongo
 from datetime import datetime, timedelta
-from pandas import date_range
 from ailoganalyzer.database.dataLoader import LogLoader
 from pylab import array
+from numpy.lib.stride_tricks import sliding_window_view
 
 
 class LogLoaderMongoDb(LogLoader):
@@ -18,10 +18,6 @@ class LogLoaderMongoDb(LogLoader):
                            "system": system,
                            "time": date,
                            "template": template})
-
-    def insert_data(self, data):
-        collection = self.db["log"]
-        collection.insert_many(data)
 
     def drop_table(self, collection):
         self.db.drop_collection(collection)
@@ -47,7 +43,7 @@ class LogLoaderMongoDb(LogLoader):
         collection.insert({"system": system})
 
     def set_abnormal_log(self, line, model_name):
-        # modif : ajoute le model a une liste
+        # TODO : a list of model that detect an anomaly
         logs = self.db["log"]
         logs.update_one({"_id": line}, {"$set": {"abnormal": True, "model": model_name}})
 
@@ -57,33 +53,35 @@ class LogLoaderMongoDb(LogLoader):
         end = logs.find({"system": system}).sort("time", pymongo.DESCENDING).limit(1)
         return list(debut)[0]["time"], list(end)[0]["time"]
 
-    def get_last_sequence(self, system, window_size):
+    def get_last_sequence(self, system, model_name, window_size, get_ids=False):
         logs = self.db["log"]
-        end_time = datetime.now()
-        start_time = end_time - timedelta(seconds=window_size)
         filters = {}
-        filters["$and"] = [
-                 {"time": {"$gte": start_time}},
-                 {"time": {"$lte": end_time}}
-        ]
         filters["system"] = system
-        res = logs.find(filters, {"template": 1, "_id": 1})
-        sequence = [r["template"] for r in res]
-        ids = [r["_id"] for r in res]
-        return sequence, ids
+        last_predicted = self.db["last_predicted"].find_one({
+            "system": system,
+            "model": model_name
+        }, {"time": 1})
 
-    def get_sequences(self, system, window_size):
-        logs = self.db["log"]
+        if last_predicted is not None:
+            last_predicted = last_predicted["time"]
+            filters["time"] = {"gte": last_predicted}
 
-        start, end = self.start_end_date(system)
-        r = date_range(start, end, freq=str(window_size) + "S")
-        sequences = []
-        for s, e in zip(r[:-1], r[1:]):
-            filters = {}
-            filters["$and"] = [
-                     {"time": {"$gte": s}},
-                     {"time": {"$lte": e}}
-            ]
-            filters["system"] = system
-            sequences.append(array([e["template"] for e in logs.find(filters, {"template": 1})], dtype=int))
-        return sequences
+        res = list(logs.find(filters, {"template": 1, "_id": 1, "time": 1}))
+
+        sequence = array([r["template"] for r in res])
+        labels = sequence[window_size:]
+        sequence = sliding_window_view(sequence[:-1], window_size)
+        print(sequence)
+        if get_ids:
+            ids = [r["_id"] for r in res]
+        else:
+            ids = []
+        times = [r["time"] for r in res]
+        assert len(times) >= 10
+
+        self.db["last_predicted"].replace_one({
+            "system": system,
+            "model": model_name
+        }, {"time": times[-window_size]}, upsert=True)
+
+        return sequence, labels, ids

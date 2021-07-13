@@ -34,7 +34,7 @@ def template_to_vec(word_vec, template):
     vec = line_to_vec(word_vec, [template], train=False)
     return vec["0"]
 
-
+# TODO: optimize this function
 @lru_cache(maxsize=2048)
 def preprocess_template(template):
     result = {}
@@ -51,7 +51,6 @@ def preprocess_template(template):
     return result
 
 
-#@lru_cache(maxsize=2048)
 def line_to_vec(template, word_count):
     fasttext = word_vec
 
