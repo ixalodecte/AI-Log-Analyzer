@@ -3,7 +3,9 @@ from drain3 import TemplateMiner
 from ailoganalyzer.dataset.line_to_vec import line_to_vec, preprocess_template
 from collections import defaultdict
 import numpy as np
+import os
 from tqdm import tqdm
+from pathlib import Path
 
 
 class LogLoader():
@@ -12,8 +14,9 @@ class LogLoader():
         self.systems = self.get_systems()
         self.template_miners = {}
         self.new_system = []
+        Path("data").mkdir(parents=True, exist_ok=True)
         for system in self.systems:
-            persistence = FilePersistence("data/preprocess/templates_persist_" + system + ".bin")
+            persistence = FilePersistence("data/templates_persist_" + system + ".bin")
             self.template_miners[system] = TemplateMiner(persistence)
         self.last_id = defaultdict(dict)
 
@@ -35,7 +38,7 @@ class LogLoader():
     def get_systems(self):
         raise NotImplementedError
 
-    def set_abnormal_log(self, system: str, line):
+    def set_abnormal_log(self, line, model_name):
         raise NotImplementedError
 
     def start_end_date(self, system: str):
@@ -47,6 +50,10 @@ class LogLoader():
     def get_sequences(self, windows_size):
         raise NotImplementedError
 
+    def remove_system(self, system):
+        os.remove("data/templates_persist_" + system + ".bin")
+        self.remove_system_db(system)
+
     def get_templates(self, system: str):
         return (c.get_template() for c in self.template_miners[system].drain.clusters)
 
@@ -55,9 +62,10 @@ class LogLoader():
 
     def add_log(self, system: str, line: str, date):
         if system not in self.systems:
+            print("new system")
             self.systems.append(system)
 
-            persistence = FilePersistence("data/preprocess/templates_persist_" + system + ".bin")
+            persistence = FilePersistence("data/templates_persist_" + system + ".bin")
             self.template_miners[system] = TemplateMiner(persistence)
             self.add_system(system)
             self.new_system.append(system)

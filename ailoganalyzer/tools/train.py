@@ -19,10 +19,10 @@ class Trainer():
                  window_size,
                  model_path,
                  device="cuda",
-                 lr_step=(80, 90),
+                 lr_step=(40, 50),
                  lr_decay_ratio=0.1,
                  lr=0.001,
-                 max_epoch=100):
+                 max_epoch=60):
         print("start training for ", system, "model", model_name)
         self.train_loader = train_loader
         self.valid_loader = valid_loader
@@ -39,9 +39,6 @@ class Trainer():
         self.accumulation_step = 1
         self.max_epoch = max_epoch
 
-        self.sequentials = False
-        self.quantitatives = False
-        self.semantics = True
         self.sample = "sliding_window"
         self.num_classes = num_classes
         self.system = system
@@ -104,7 +101,8 @@ class Trainer():
             "state_dict": self.model.state_dict(),
             "best_loss": self.best_loss,
             "log": self.log,
-            "best_score": self.best_score
+            "best_score": self.best_score,
+            "num_keys": self.num_classes
         }
         if save_optimizer:
             checkpoint['optimizer'] = self.optimizer.state_dict()

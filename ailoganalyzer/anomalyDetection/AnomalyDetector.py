@@ -1,11 +1,12 @@
 class AnomalyDetector():
-    def __init__(self, model_name, log_loader):
-        self.log_loader = log_loader
+    def __init__(self, model_name):
         self.model_name = model_name
 
     def set_system(self, system):
         self.system = system
-        self.initialize_model()
+
+    def set_logLoader(self, log_loader):
+        self.log_loader = log_loader
 
     def is_trainable(self):
         raise NotImplementedError

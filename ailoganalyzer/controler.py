@@ -42,7 +42,6 @@ class Controler():
             is_training = {key: val for key, val in is_training.items() if val[0].is_alive()}
 
             time.sleep(self.predict_frequence)
-            print("start")
             self.last_time = time.time()
             self.check_new_system()
             for elt in self.anomaly_detectors:
@@ -50,7 +49,6 @@ class Controler():
                 if elt.is_trainable() and elt.system not in is_training:
                     elt.set_dataLoader_training()
                     p = elt.train()
-                    print(p)
                     if p is not None:
                         is_training[elt.system] = (p, elt.model_name)
                     else:

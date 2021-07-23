@@ -12,15 +12,18 @@ class LogLoaderMongoDb(LogLoader):
         self.db = self.client[database_name]
         super().__init__()
 
-    def insert_line(self, system, line, date, template=-1):
+    def insert_line(self, system, line, date, template):
         collection = self.db["log"]
         collection.insert({"message": line,
                            "system": system,
                            "time": date,
                            "template": template})
 
-    def drop_table(self, collection):
-        self.db.drop_collection(collection)
+    def remove_system_db(self, system):
+        self.db["system"].delete_one({"system": system})
+        self.db["log"].delete_many({"system": system})
+        self.db["train"].delete_many({"system": system})
+        self.db["last_predicted"].delete_many({"system": system})
 
     def set_trained(self, system, model_name):
         systems = self.db["train"]

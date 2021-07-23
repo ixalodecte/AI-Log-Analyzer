@@ -30,7 +30,7 @@ class loganomaly(nn.Module):
         super(loganomaly, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
-        self.lstm0 = nn.LSTM(input_size,
+        self.lstm0 = nn.LSTM(1,
                              hidden_size,
                              num_layers,
                              batch_first=True)
@@ -46,21 +46,6 @@ class loganomaly(nn.Module):
         self.u_omega = Variable(torch.zeros(self.attention_size))
 
         self.sequence_length = 28
-
-    def attention_net(self, lstm_output):
-        output_reshape = torch.Tensor.reshape(lstm_output,
-                                              [-1, self.hidden_size])
-        attn_tanh = torch.tanh(torch.mm(output_reshape, self.w_omega))
-        attn_hidden_layer = torch.mm(
-            attn_tanh, torch.Tensor.reshape(self.u_omega, [-1, 1]))
-        exps = torch.Tensor.reshape(torch.exp(attn_hidden_layer),
-                                    [-1, self.sequence_length])
-        alphas = exps / torch.Tensor.reshape(torch.sum(exps, 1), [-1, 1])
-        alphas_reshape = torch.Tensor.reshape(alphas,
-                                              [-1, self.sequence_length, 1])
-        state = lstm_output
-        attn_output = torch.sum(state * alphas_reshape, 1)
-        return attn_output
 
     def forward(self, features, device):
         input0, input1 = features[0], features[1]
@@ -103,3 +88,18 @@ class robustlog(nn.Module):
         out, _ = self.lstm(input0, (h0, c0))
         out = self.fc(out[:, -1, :])
         return out
+
+    def attention_net(self, lstm_output):
+        output_reshape = torch.Tensor.reshape(lstm_output,
+                                              [-1, self.hidden_size])
+        attn_tanh = torch.tanh(torch.mm(output_reshape, self.w_omega))
+        attn_hidden_layer = torch.mm(
+            attn_tanh, torch.Tensor.reshape(self.u_omega, [-1, 1]))
+        exps = torch.Tensor.reshape(torch.exp(attn_hidden_layer),
+                                    [-1, self.sequence_length])
+        alphas = exps / torch.Tensor.reshape(torch.sum(exps, 1), [-1, 1])
+        alphas_reshape = torch.Tensor.reshape(alphas,
+                                              [-1, self.sequence_length, 1])
+        state = lstm_output
+        attn_output = torch.sum(state * alphas_reshape, 1)
+        return attn_output
