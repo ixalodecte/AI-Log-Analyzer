@@ -1,4 +1,4 @@
-from ailoganalyzer.dataset.utils_semantic_vec import load_vectors, camel_to_snake, replace_all_blank, lemmatize_stop
+from ailoganalyzer.dataset.utils_semantic_vec import camel_to_snake, replace_all_blank, lemmatize_stop
 import numpy as np
 from collections import Counter
 import math
@@ -25,16 +25,11 @@ def calcul_TFIDF(template, word_count):
     return tf_idf
 
 
-def import_word_vec():
-    fasttext = load_vectors('/home/kangourou/gestionDeProjet/AI-Log-Analyzer/data/cc.en.300.vec')
-    return fasttext
-
-
 def template_to_vec(word_vec, template):
     vec = line_to_vec(word_vec, [template], train=False)
     return vec["0"]
 
-# TODO: optimize this function
+
 @lru_cache(maxsize=2048)
 def preprocess_template(template):
     result = {}
@@ -47,20 +42,20 @@ def preprocess_template(template):
     temp = lemmatize_stop(temp)
     result = [word for word in temp if word in word_vec]
 
-    #print("word extracted :",result)
     return result
 
 
 def line_to_vec(template, word_count):
     fasttext = word_vec
 
+    # 1 ..
     result = preprocess_template(template)
 
     # 2 ..
 
     count = calcul_TFIDF(result, word_count)
 
-    # 3..
+    # 3 ..
 
     template = result
 

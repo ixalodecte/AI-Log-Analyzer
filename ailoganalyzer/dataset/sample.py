@@ -15,7 +15,6 @@ class sliddingWindowDataset(Dataset):
 
         self.labels = labels
         self.Sequentials = log_seq
-        print(self.labels.shape, self.Sequentials.shape)
 
     def __len__(self):
         return len(self.labels)
