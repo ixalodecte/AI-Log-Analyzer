@@ -1,0 +1,10 @@
+drain3
+matplotlib
+numpy
+pandas
+pymongo
+scikit_learn
+scipy
+spacy
+torch
+tqdm
