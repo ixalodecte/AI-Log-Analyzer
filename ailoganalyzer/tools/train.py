@@ -14,7 +14,7 @@ class Trainer():
                  train_loader,
                  valid_loader,
                  num_classes,
-                 system,
+                 prefix_file,
                  model_name,
                  window_size,
                  model_path,
@@ -23,7 +23,7 @@ class Trainer():
                  lr_decay_ratio=0.1,
                  lr=0.001,
                  max_epoch=60):
-        print("start training for ", system, "model", model_name)
+        print("start training for ", prefix_file, "model", model_name)
         self.train_loader = train_loader
         self.valid_loader = valid_loader
         self.model_name = model_name
@@ -40,7 +40,7 @@ class Trainer():
         self.max_epoch = max_epoch
 
         self.num_classes = num_classes
-        self.system = system
+        self.prefix_file = prefix_file
         self.model_path = model_path
 
         os.makedirs(self.save_dir, exist_ok=True)
@@ -90,7 +90,7 @@ class Trainer():
         if saveLast:
             save_path = self.model_path
         else:
-            save_path = self.save_dir + "/" + self.model_name + "_" + self.system + "_" + suffix + ".pth"
+            save_path = self.prefix_file + "_" + suffix + ".pth"
         torch.save(checkpoint, save_path)
         print("Save model checkpoint at {}".format(save_path))
 
@@ -170,6 +170,6 @@ class Trainer():
             self.train(epoch)
             if epoch >= self.max_epoch // 2 and epoch % 2 == 0:
                 self.valid(epoch)
-            if epoch % 10 == 0:
+            if epoch % 10 == 0 or epoch == self.max_epoch-1:
                 self.save_checkpoint(epoch, save_optimizer=True, saveLast=True)
             self.save_log()
