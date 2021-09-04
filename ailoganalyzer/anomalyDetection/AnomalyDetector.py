@@ -1,7 +1,7 @@
 class AnomalyDetector():
     def __init__(self, model_name):
         self.model_name = model_name
-        self.mode = "train"
+        self.is_trained = False
 
     def train(self):
         raise NotImplementedError
@@ -11,9 +11,3 @@ class AnomalyDetector():
 
     def initialize_model(self):
         raise NotImplementedError
-
-    def set_mode(self, mode):
-        if mode == "train" or mode == "predict":
-            self.mode = mode
-            return True
-        return False

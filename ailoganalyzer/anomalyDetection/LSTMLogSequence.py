@@ -1,4 +1,3 @@
-from datetime import timedelta
 from sklearn.model_selection import train_test_split
 import torch
 from torch.utils.data import DataLoader
@@ -22,9 +21,45 @@ from ailoganalyzer.dataset.sample import sliddingWindowDataset
 
 
 class LSTMLogSequence(AnomalyDetector):
-    def __init__(self, system, num_candidates=9, model="robustLog", device="auto"):
+    """An abstract class for implementing anomaly detection models.
+
+    ...
+
+    Attributes
+    ----------
+    prefix_file : str
+        the string wich will be added at the beginning the persistent file
+        of drain3, and the .path file of the model
+    num_candidates : int
+        for prediction phase : the number of possible candidate for a log.
+        The lower the value, the sensible the detection
+    window_size : int
+        the window size to use for the LSTM model
+    device : {'cpu', 'cuda', 'auto'}
+        the device to be used to train the model and predict.
+        'cpu' will work everytime. To use 'cuda' you need to have a compatible
+        graphic card, and a proper installation of CUDA. 'auto' will use cuda
+        if is_available, else it will use cpu.
+    lr : int
+        learning rate for training.
+
+    Methods
+    -------
+    add_train_log(log)
+        add a log that will be used the next time train() will be called.
+        The logs have to be added in the correct order.
+    predict(log)
+        return True if the log is abnormal, False otherwise
+    train()
+        train the model with the data added via the add_train_log function
+
+    """
+
+    def __init__(self, prefix_file, model_name, num_candidates,
+                 window_size, device, lr, lr_step,
+                 lr_decay_ratio, max_iter):
         Path("data").mkdir(parents=True, exist_ok=True)
-        self.persistence_path = "data/templates_persist_" + model + "_" + system + ".bin"
+        self.persistence_path = prefix_file + "_templates_persist.bin"
         persistence = FilePersistence(self.persistence_path)
         config = TemplateMinerConfig()
         config.load("ailoganalyzer/drain3.ini")
@@ -33,59 +68,59 @@ class LSTMLogSequence(AnomalyDetector):
         if device == "auto":
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        super().__init__(model)
+        super().__init__(model_name)
 
-        self.system = system
+        self.prefix_file = prefix_file
+        self.num_candidates = num_candidates
+        self.window_size = window_size
+        self.device = device
+        self.lr = lr
+        self.lr_step = lr_step
+        self.lr_decay_ratio = lr_decay_ratio
+        self.nb_epoch = max_iter
+
         self.semantic = False
         self.sequentials = False
         self.quantitatives = False
-        self.window_size = 10
-        self.num_candidates = num_candidates
 
-        self.train_delta = timedelta(days=0)
-
-        self.device = device
         self.model = None
 
         self.sequence = []
         self.train_seq = []
         self.train_loader = None
         self.valid_loader = None
-        self.model_path = "data/" + self.model_name + "_" + self.system + "_" + "last.pth"
+        self.model_path = self.prefix_file + "_last.pth"
 
-    def add_log(self, log):
-        result = self.template_miner.add_log_message(log)
-        if result["change_type"] != "none":
-            pass
-        cluster_id = result["cluster_id"] - 1
+    def add_train_log(self, log):
+        cluster_id = self.log_to_key(log)
+        self.train_seq.append(cluster_id)
 
-        if self.mode == "train":
-            self.train_seq.append(cluster_id)
+    def predict(self, log):
+        cluster_id = self.log_to_key(log)
+        if len(self.train_seq) > 0:
+            self.train_seq = []
 
+        self.sequence = np.array(self.sequence)
+        label = np.array([cluster_id])
+        if len(self.sequence) == self.window_size:
+            res = self.predict_seq(self.sequence, label)
         else:
-            if len(self.train_seq) > 0:
-                self.sequence = self.train_seq[-self.window_size:]
-                self.train_seq = []
+            res = False
 
-            self.sequence = np.array(self.sequence)
-            label = np.array([cluster_id])
-            if len(self.sequence) == self.window_size:
-                res = self.predict(self.sequence, label)
-            else:
-                res = False
-
-            if len(self.sequence) == self.window_size:
-                self.sequence = self.sequence[1:]
-            self.sequence = np.append(self.sequence, cluster_id)
-            return res
+        if len(self.sequence) == self.window_size:
+            self.sequence = self.sequence[1:]
+        self.sequence = np.append(self.sequence, cluster_id)
+        return res
 
     def initialize_model(self):
         state = None
         if os.path.isfile(self.model_path):
             state = torch.load(self.model_path)
             num_classes = state["num_keys"]
+            self.is_trained = True
         else:
             num_classes = self.get_number_classes()
+            self.is_trained = False
         self.num_classes = num_classes
 
         if self.model_name == "loganomaly":
@@ -96,8 +131,6 @@ class LSTMLogSequence(AnomalyDetector):
             self.semantic = True
             self.quantitatives = True
             self.batch_size = 256
-            self.nb_epoch = 60
-            self.lr_step = (40, 50)
 
         elif self.model_name == "deeplog":
             self.model = deeplog(hidden_size=64,
@@ -106,8 +139,6 @@ class LSTMLogSequence(AnomalyDetector):
             self.input_size = 1
             self.sequentials = True
             self.batch_size = 2048
-            self.nb_epoch = 370
-            self.lr_step = (300, 350)
 
         elif self.model_name == "robustlog":
             raise NotImplementedError
@@ -119,6 +150,8 @@ class LSTMLogSequence(AnomalyDetector):
             self.model.load_state_dict(state["state_dict"])
 
     def train(self):
+        if len(self.train_seq) < self.window_size:
+            raise RuntimeError("There is not enought data for training. Add logs with the add_train_log function.")
         if self.train_loader is None or self.valid_loader is None:
             self.set_dataLoader_training()
 
@@ -127,7 +160,7 @@ class LSTMLogSequence(AnomalyDetector):
                           self.train_loader,
                           self.valid_loader,
                           self.num_classes,
-                          self.system,
+                          self.prefix_file,
                           self.model_name,
                           self.window_size,
                           max_epoch=self.nb_epoch,
@@ -136,6 +169,7 @@ class LSTMLogSequence(AnomalyDetector):
                           device=self.device
                           )
         trainer.start_train()
+        self.is_trained = True
 
     def set_dataLoader_training(self):
         self.train_seq = np.array(self.train_seq)
@@ -178,7 +212,9 @@ class LSTMLogSequence(AnomalyDetector):
                                        shuffle=False,
                                        pin_memory=True)
 
-    def predict(self, sequence, label):
+    def predict_seq(self, sequence, label):
+        if not self.is_trained:
+            raise RuntimeError("You need to train the model before predicting")
         sequence = sequence[np.newaxis]
         event2vec = self.template_to_vec_all()
         if self.model is None:
@@ -228,9 +264,8 @@ class LSTMLogSequence(AnomalyDetector):
         keys = random.sample(list(hdfs_labels), nb_block)
         values = [hdfs_labels[k] for k in keys]
         hdfs_labels = dict(zip(keys, values))
-        #print("\n".join(self.get_templates()))
 
-        blk_finder_2 = re.compile("(blk_-?\d+)")
+        blk_finder_2 = re.compile(r"(blk_-?\d+)")
         with open(hdfs_log, "r") as f:
             data_dict = {key: [] for key in hdfs_labels.keys()}
             for line in tqdm(f):
@@ -280,7 +315,7 @@ class LSTMLogSequence(AnomalyDetector):
                 if seq_tuple in mem:
                     result = mem[seq_tuple]
                 else:
-                    result = self.predict(seq, label)
+                    result = self.predict_seq(seq, label)
                     mem[seq_tuple] = result
                 if result:
                     FP += 1
@@ -291,7 +326,7 @@ class LSTMLogSequence(AnomalyDetector):
                 if seq_tuple in mem:
                     result = mem[seq_tuple]
                 else:
-                    result = self.predict(seq, label)
+                    result = self.predict_seq(seq, label)
                     mem[seq_tuple] = result
                 if result:
                     TP += 1
@@ -301,10 +336,18 @@ class LSTMLogSequence(AnomalyDetector):
         R = 100 * TP / (TP + FN)
         F1 = 2 * P * R / (P + R)
         print(
-            'false positive (FP): {}, false negative (FN): {}, Precision: {:.3f}%, Recall: {:.3f}%, F1-measure: {:.3f}%'
-            .format(FP, FN, P, R, F1))
+            '''false positive (FP): {}, false negative (FN): {},
+            Precision: {:.3f}%, Recall: {:.3f}%,
+            F1-measure: {:.3f}%'''.format(FP, FN, P, R, F1))
 
     # -------------- drain3 function -----------------
+
+    def log_to_key(self, log):
+        result = self.template_miner.add_log_message(log)
+        if result["change_type"] != "none":
+            pass
+        cluster_id = result["cluster_id"] - 1
+        return cluster_id
 
     def get_templates(self):
         return (c.get_template() for c in self.template_miner.drain.clusters)
@@ -340,4 +383,4 @@ class LSTMLogSequence(AnomalyDetector):
         raise RuntimeError
 
     def remove_system(self):
-        os.remove("data/templates_persist_" + self.model_name + "_" + self.system + ".bin")
+        os.remove(self.persistence_path)

@@ -1,17 +1,15 @@
 import pymongo
-from ailoganalyzer.database.dataLoader import LogLoader
-from pylab import array
-from numpy.lib.stride_tricks import sliding_window_view
+from ailoganalyzer.database.log_persistence import LogPersistence
 
 
-class LogLoaderMongoDb(LogLoader):
+class MongoPersistence(LogPersistence):
     def __init__(self, database_name):
         self.database_name = database_name
         self.client = pymongo.MongoClient('localhost', 27017)
         self.db = self.client[database_name]
         super().__init__()
 
-    def save_log(self, system, line, time=None, abnormal=None):
+    def save_log(self, line, system, time=None, abnormal=None):
         collection = self.db["log"]
         collection.insert({"message": line,
                            "system": system,
@@ -24,6 +22,11 @@ class LogLoaderMongoDb(LogLoader):
     def get_systems(self):
         systems = self.db["log"]
         return [i["system"] for i in systems.distinct("system")]
+
+    def get_logs(self, system, limit):
+        log = self.db["log"]
+        res = log.find().sort("time", pymongo.DESCENDING).limit(limit)
+        return list(res)
 
     def start_end_date(self, system):
         logs = self.db["log"]
