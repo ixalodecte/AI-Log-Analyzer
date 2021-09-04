@@ -1,29 +1,70 @@
 # AI-Log-Analyzer
 
-AI-Log-Analyzer est un projet qui a pour but la detection automatique et en temps réél d'anomalies systemes, à l'aide de l'analyse de logs. AI-Log-Analyzer peut gérer plusieurs systemes au sein d'une infrastructure. Les logs sont récupéré et centralisé dans une base de donnés grace au protocole SNMP. Ils sont ensuite analysés grace à plusieurs couche de machine learning. Enfin, une interface web permet l'affichage des données.
+AI-Log-Analyzer is an open source toolkit based on deep-learning, for unstructured log anomaly detection.
+
+## Components
+
+### Anomaly Detection: The core of the project.
+1. **Log Parsing:** Logs are structured using the [drain3 tool](https://github.com/IBM/Drain3)
+2. **Training:** An unsupervised LSTM model is trained to learn the normal workflow of a system.
+3. **Anomaly Detection:** If the model has been trained, it can predict anomalies in log sequences.
+
+You can read the papers about [deeplog](https://www.cs.utah.edu/~lifeifei/papers/deeplog.pdf) and [loganomaly](https://www.ijcai.org/proceedings/2019/0658.pdf) for further information.
+
+### Database
+The module provide wrappers to help the user to saves logs in a database:
+- sqlite3
+- mongodb (You must have a proper installation of mongodb to use it, and the pymongo module)
+
+### Visualisation
+I plan to add a way to visualize the content of the database.
 
 ## Installation
-Les programmes suivant sont nécessaire pour faire tourner le projet:
-- Python3
-- Mongodb
-- pip3
-- cuda (si une carte graphique est utilisé)
-
-Installez ensuite les dépendances nécessaire avec la commande:
 ```
-./install.sh
+git clone ...
+cd AI-Log-Analyzer
+pip3 install -r requirements.txt
+python -m spacy download en_core_web_sm
 ```
 
-## Utilisation
+If you have a compatible gpu you can install CUDA. Training a neural network on gpu is way faster than cpu.
 
-Lancement de l'analyseur :
-python3 analyzer.py
+At this point you can only use the "deeplog" model. "loganomaly" model use word2Vec to convert logs into vectors. To do this you have to download the file "cc.en.300.vec", wich contains the semantic representation of each english words.
 
-Lancement de l'application web (dans un autre terminal) :
-cd api python3 server.py
-L'application web est accessible sur le port 4000 : http://localhost:4000
+```
+wget https://dl.fbaipublicfiles.com/fasttext/vectors-crawl/cc.en.300.vec.gz
+gunzip cc.en.300.vec.gz
+python3 install_fasttext.py
+```
 
-## Fonctionnement interne
+## Quick start
 
-- Time-Serie : Un algorithme de machine learning cherche des anomalies dans le nombre de log généré, par exemple une chute du nombre de log (perte d'un systeme), un pic de logs (comportement anormal).
-- Analyse Semantique: Un second algorithme lit les logs et tente d'en extraire de l'information, pour comprendre le fonctionnement normal d'un systeme. C'est une implémentation partielle de [Robust-Log](https://netman.aiops.org/~peidan/ANM2019/6.LogAnomalyDetection/LectureCoverage/2019FSE_LogRobust.pdf). Dans un premier temps, les templates de logs sont extraits grace à l'outils [drain3](https://github.com/IBM/Drain3). Les templates sont ensuite transformé en vecteurs sémantiques. Cette transformation permet de gérer les nouveaux types de log, légerement different des logs habituels mais sémantiquement similaire. Pour la classification des logs nous utilisons un LSTM (une catégorie de réseau de neurone récurrent)
+### Train the model
+
+```python
+from ailoganalyzer.anomalyDetection.LSTM import DeepLog
+
+model = DeepLog(prefix_file="test") # initialization of the model
+# The attribute "prefix_file" is used to save the model in a file
+
+with open("your_log_file.log", "r") as f:
+    for line in f:
+        line = line.strip() # remove the ending "\n".
+        # It is recommended to extract headers such as timestamp, ID, hostname,
+        # severity... to improve the performance of the model
+        model.add_train_log(line)
+
+lstm.train() # train the model
+```
+
+### Detect Anomaly
+```python
+from ailoganalyzer.anomalyDetection.LSTM import DeepLog
+
+model = DeepLog(prefix_file="test") # initialization of the model
+
+with open("your_log_file.log", "r") as f:
+    for line in f:
+        line = line.strip()
+        model.predict(line) # return True if abnormal
+```
