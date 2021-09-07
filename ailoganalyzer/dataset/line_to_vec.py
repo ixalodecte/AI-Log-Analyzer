@@ -4,8 +4,11 @@ from collections import Counter
 import math
 import dbm
 from functools import lru_cache
+import pathlib
 
-word_vec = dbm.open('vec')
+vec_file = str(pathlib.Path(__file__).parent.resolve() / "vec")
+
+word_vec = dbm.open(vec_file)
 
 
 def calcul_TFIDF(template, word_count):
