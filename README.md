@@ -34,7 +34,12 @@ At this point you can only use the "deeplog" model. "loganomaly" model use word2
 ```
 wget https://dl.fbaipublicfiles.com/fasttext/vectors-crawl/cc.en.300.vec.gz
 gunzip cc.en.300.vec.gz
-python3 install_fasttext.py
+```
+
+Then run in a python interpreter:
+```python
+from ailoganalyzer.dataset.dbm_vec import install_vectors
+install_vectors("cc.en.300.vec")
 ```
 
 ## Quick start
