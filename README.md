@@ -59,7 +59,7 @@ with open("your_log_file.log", "r") as f:
         # severity... to improve the performance of the model
         model.add_train_log(line)
 
-lstm.train() # train the model
+model.train() # train the model
 ```
 
 ### Detect Anomaly
