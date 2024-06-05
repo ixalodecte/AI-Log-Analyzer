@@ -1,6 +1,6 @@
 # AI-Log-Analyzer
 
-AI-Log-Analyzer is an open source toolkit based on deep-learning, for unstructured log anomaly detection.
+AI-Log-Analyzer is an open source toolkit, user friendly, based on deep-learning, for unstructured log anomaly detection.
 
 ## Components
 
@@ -10,14 +10,6 @@ AI-Log-Analyzer is an open source toolkit based on deep-learning, for unstructur
 3. **Anomaly Detection:** If the model has been trained, it can predict anomalies in log sequences.
 
 You can read the papers about [deeplog](https://www.cs.utah.edu/~lifeifei/papers/deeplog.pdf) and [loganomaly](https://www.ijcai.org/proceedings/2019/0658.pdf) for further information.
-
-### Database
-The module provide wrappers to help the user to saves logs in a database:
-- sqlite3
-- mongodb (You must have a proper installation of mongodb to use it, and the pymongo module)
-
-### Visualisation
-I plan to add a way to visualize the content of the database.
 
 ## Installation
 ```
@@ -29,7 +21,7 @@ python -m spacy download en_core_web_sm
 
 If you have a compatible gpu you can install CUDA. Training a neural network on gpu is way faster than cpu.
 
-At this point you can only use the "deeplog" model. "loganomaly" model use word2Vec to convert logs into vectors. To do this you have to download the file "cc.en.300.vec", wich contains the semantic representation of each english words.
+Unlike DeepLog, LogAnomaly convert log into semantic vectors. To use it, you need to download a dictionnary that map words into vectors. Bellow the instruction to download word2vec for English:
 
 ```
 wget https://dl.fbaipublicfiles.com/fasttext/vectors-crawl/cc.en.300.vec.gz
@@ -39,7 +31,14 @@ gunzip cc.en.300.vec.gz
 Then run in a python interpreter:
 ```python
 from ailoganalyzer.dataset.dbm_vec import install_vectors
-install_vectors("cc.en.300.vec")
+install_vectors("cc.en.300.vec", "en_vec")
+```
+
+To ensure the dictionnary is installed:
+```python
+with open("en_vec") as d:
+    print("hello" in d)
+    print(d["hello"])
 ```
 
 ## Quick start
@@ -47,29 +46,18 @@ install_vectors("cc.en.300.vec")
 ### Train the model
 
 ```python
-from ailoganalyzer.anomalyDetection.LSTM import DeepLog
+from ailoganalyzer.dataset import LogFileDataset
+from ailoganalyzer.model import DeepLog, LogAnomaly
+from torch.utils.data import DataLoader
+import lightning as L
 
-model = DeepLog(prefix_file="test") # initialization of the model
-# The attribute "prefix_file" is used to save the model in a file
+log_file = "path/to/your/logfile.log"
+dataset = LogFileDataset(log_file, semantic_vector="en_vec", seq_label=True)
 
-with open("your_log_file.log", "r") as f:
-    for line in f:
-        line = line.strip() # remove the ending "\n".
-        # It is recommended to extract headers such as timestamp, ID, hostname,
-        # severity... to improve the performance of the model
-        model.add_train_log(line)
+train_dataloader = DataLoader(train_dataset, batch_size=100)
 
-model.train() # train the model
-```
+model = LogAnomaly(dataset.get_num_classes(), optimizer_fun="adam")
 
-### Detect Anomaly
-```python
-from ailoganalyzer.anomalyDetection.LSTM import DeepLog
-
-model = DeepLog(prefix_file="test") # initialization of the model
-
-with open("your_log_file.log", "r") as f:
-    for line in f:
-        line = line.strip()
-        model.predict(line) # return True if abnormal
+trainer = L.Trainer(max_epochs=100)
+trainer.fit(model=model, train_dataloaders=train_dataloader)
 ```
