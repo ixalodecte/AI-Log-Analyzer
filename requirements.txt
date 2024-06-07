@@ -1,9 +1,3 @@
 drain3
-matplotlib
-numpy
-pandas
-pymongo
-scikit_learn
 spacy
-torch
-tqdm
+lightning
