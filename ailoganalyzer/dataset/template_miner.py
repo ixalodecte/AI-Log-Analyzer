@@ -16,18 +16,20 @@ from ailoganalyzer.dataset.utils_semantic_vec import camel_to_snake, replace_all
 
 
 class TemplateMinerr():
-    def __init__(self, checkpoint_file=None, drain_config = "ailoganalyzer/drain3.ini"):
+    def __init__(self, checkpoint_file=None, drain_config = None):
         self.persistence_file = checkpoint_file
         if checkpoint_file is not None:
             persistence = FilePersistence(self.persistence_file)
         else:
             persistence = None
         
-        
-        config = TemplateMinerConfig()
-        config.load(drain_config)
-        
-        config.profiling_enabled = False
+        if drain_config is not None:
+            config = TemplateMinerConfig()
+            config.load(drain_config)
+
+            config.profiling_enabled = False
+        else:
+            config = None
         self.template_miner = TemplateMiner(persistence_handler=persistence, config=config)
         
         self.modified = {}
