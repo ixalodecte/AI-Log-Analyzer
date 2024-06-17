@@ -13,9 +13,7 @@ You can read the papers about [deeplog](https://www.cs.utah.edu/~lifeifei/papers
 
 ## Installation
 ```
-git clone ...
-cd AI-Log-Analyzer
-pip3 install -r requirements.txt
+pip install ailoganalyzer
 python -m spacy download en_core_web_sm
 ```
 
